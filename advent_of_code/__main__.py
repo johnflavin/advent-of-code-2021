@@ -23,9 +23,14 @@ def main(argv):
     parser.add_argument(
         "--date", type=str, default=None, required=False, help="Datestamp of puzzle to run (default today)"
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--input", type=str, default=None, required=False,
         help="Input file path. Omit to use default input for date. Use \"-\" to read stdin."
+    )
+    group.add_argument(
+        "--example", action="store_true", default=False,
+        help="Use the example input, not the full input"
     )
     args = parser.parse_args(argv)
 
@@ -45,9 +50,9 @@ def main(argv):
     puzzle_main = import_puzzle_main(year, day)
     
     # Get input file data
-    if args.input is None or args.input == "example":
+    if args.input is None:
         # Use default file from package resource
-        variant = "input" if args.input is None else "example"
+        variant = "example" if args.example else "input"
         resource_package = f"{__package__}.{year}.resources"
         resource_name = f"{day:02}.{variant}.txt"
         
