@@ -1,2 +1,3 @@
 session.json
 *.input.*
+__pycache__

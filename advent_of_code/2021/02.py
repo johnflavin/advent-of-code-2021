@@ -27,8 +27,9 @@ It increases your depth by your aim multiplied by X.
 
 """
 
-import sys
 from collections.abc import Iterable
+
+from ..util import Part
 
 def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int, int]:
     horiz = 0
@@ -58,20 +59,9 @@ def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int,
 
     return horiz, depth
 
-def get_file_lines(input_file: str) -> Iterable[str]:
-    """Open a file and iterate over its lines"""
-    with open(input_file, "r") as f:
-        yield from f.readlines()
 
-
-def main():
-    input_file = sys.argv[1]
-    part2 = len(sys.argv) > 2 and sys.argv[2].lower() == "part2"
-    lines = get_file_lines(input_file)
-    horiz, depth = position_from_lines(lines, part2=part2)
+def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
+    horiz, depth = position_from_lines(lines, part2=(part == Part.TWO))
     print(horiz*depth)
-    
-
-if __name__ == "__main__":
-    main()
+    return 0
     

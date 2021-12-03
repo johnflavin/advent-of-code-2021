@@ -28,6 +28,8 @@ import itertools
 import sys
 from collections.abc import Iterable
 
+from ..util import Part
+
 def count_increases(lines: list[int]) -> int:
     return sum((a < b) for a, b in sliding_window(lines))
 
@@ -45,21 +47,9 @@ def sliding_window(iterable, n=2):
     return zip(*iterables)
 
 
-def get_file_lines(input_file: str) -> Iterable[str]:
-    """Open a file and iterate over its lines"""
-    with open(input_file, "r") as f:
-        yield from f.readlines()
-
-
-def main():
-    input_file = sys.argv[1]
-    do_window = len(sys.argv) > 2 and sys.argv[2].lower() == "window"
-    lines = (int(ls) for l in get_file_lines(input_file) if (ls := l.strip()))
-    if do_window:
+def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
+    lines = (int(ls) for l in lines if (ls := l.strip()))
+    if part == Part.TWO:
         lines = (sum(window) for window in sliding_window(lines, 3))
     print(count_increases(lines))
-    
-
-if __name__ == "__main__":
-    main()
-    
+    return 0
