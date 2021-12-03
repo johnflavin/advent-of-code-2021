@@ -36,7 +36,6 @@ def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int,
     depth = 0
     aim = 0
     for line in lines:
-        line = line.strip()
         # print(line)
         direction, x = line.split()
         x = int(x)

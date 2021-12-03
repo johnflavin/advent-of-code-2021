@@ -106,7 +106,7 @@ def partition(numbers: Iterable[str], position: int = 0, most_common: bool = Tru
     
 
 def part_two(lines: Iterable[str]) -> int:
-    lines = [l.strip() for l in lines]
+    lines = list(lines)
     o2_vals = lines
     co2_vals = lines
     

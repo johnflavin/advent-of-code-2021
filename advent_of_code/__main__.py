@@ -64,7 +64,7 @@ def main(argv):
         def create_line_generator():
             with open(args.input, "r") as f:
                 yield from f
-    lines = create_line_generator()
+    lines = (l.strip() for l in create_line_generator())
     
     part = Part(args.part)
     return puzzle_main(lines, part)

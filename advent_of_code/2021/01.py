@@ -48,7 +48,7 @@ def sliding_window(iterable, n=2):
 
 
 def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
-    lines = (int(ls) for l in lines if (ls := l.strip()))
+    lines = (int(l) for l in lines if l)
     if part == Part.TWO:
         lines = (sum(window) for window in sliding_window(lines, 3))
     print(count_increases(lines))
