@@ -75,11 +75,6 @@ Use the binary numbers in your diagnostic report to calculate the oxygen generat
 from collections import Counter
 from collections.abc import Iterable
 
-from ..util import Part
-
-def make_tree():
-    return {"0": [], "1": []}
-
 def part_one(lines: Iterable[str]) -> int:
     def most_common_bits():
         for bit_iter in zip(*(l.strip() for l in lines)):
@@ -122,12 +117,3 @@ def part_two(lines: Iterable[str]) -> int:
     o2 = int("".join(o2_vals[0]), base=2)
     co2 = int("".join(co2_vals[0]), base=2)
     return o2*co2
-
-def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
-    if part == Part.ONE:
-        print(part_one(lines))
-    else:
-        print(part_two(lines))
-
-    return 0
-    

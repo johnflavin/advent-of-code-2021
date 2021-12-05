@@ -29,7 +29,6 @@ It increases your depth by your aim multiplied by X.
 
 from collections.abc import Iterable
 
-from ..util import Part
 
 def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int, int]:
     horiz = 0
@@ -59,8 +58,12 @@ def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int,
     return horiz, depth
 
 
-def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
-    horiz, depth = position_from_lines(lines, part2=(part == Part.TWO))
-    print(horiz*depth)
-    return 0
+def part_one(lines: Iterable[str]) -> int:
+    horiz, depth = position_from_lines(lines, part2=False)
+    return horiz*depth
+
+
+def part_two(lines: Iterable[str]) -> int:
+    horiz, depth = position_from_lines(lines, part2=True)
+    return horiz*depth
     

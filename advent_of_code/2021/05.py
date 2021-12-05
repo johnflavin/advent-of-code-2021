@@ -12,8 +12,6 @@ from collections.abc import Iterable
 from math import copysign
 from typing import Optional, TypeVar
 
-from ..util import Part
-
 Point = tuple[int]
 
 def parse_lines(lines: Iterable[str]) -> Iterable[tuple[int]]:
@@ -79,12 +77,3 @@ def part_one(lines: Iterable[str]) -> int:
     
     # sum points that occur more than once
     return sum(1 for count in c.values() if count > 1)
-
-def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
-    if part == Part.ONE:
-        print(part_one(lines))
-    else:
-        print(part_two(lines))
-
-    return 0
-    
