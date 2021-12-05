@@ -28,7 +28,6 @@ import itertools
 import sys
 from collections.abc import Iterable
 
-from ..util import Part
 
 def count_increases(lines: list[int]) -> int:
     return sum((a < b) for a, b in sliding_window(lines))
@@ -47,9 +46,12 @@ def sliding_window(iterable, n=2):
     return zip(*iterables)
 
 
-def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
-    lines = (int(l) for l in lines if l)
-    if part == Part.TWO:
-        lines = (sum(window) for window in sliding_window(lines, 3))
-    print(count_increases(lines))
-    return 0
+def part_one(lines: Iterable[str]) -> int:
+    lines = map(int, lines)
+    return count_increases(lines)
+
+
+def part_two(lines: Iterable[str]) -> int:
+    lines = map(int, lines)
+    lines = (sum(window) for window in sliding_window(lines, 3))
+    return count_increases(lines)

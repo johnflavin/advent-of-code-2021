@@ -12,8 +12,6 @@ from collections.abc import Iterable
 from itertools import islice
 from typing import Optional, TypeVar
 
-from ..util import Part
-
 T = TypeVar("T")
 
 
@@ -102,7 +100,8 @@ def part_two(lines: Iterable[str]) -> int:
         if len(id_board) == 0:
             break
 
-    return f"Board {idx}, {result}*{value} = {result*value}"
+    # print(f"Board {idx}, {result}*{value} = {result*value}")
+    return result*value
 
 
 def part_one(lines: Iterable[str]) -> int:
@@ -112,16 +111,8 @@ def part_one(lines: Iterable[str]) -> int:
         for idx, board in enumerate(boards, 1):
             result = board.mark(value)
             if result is not None:
-                return f"Board {idx}, {result}*{value} = {result*value}"
+                # print(f"Board {idx}, {result}*{value} = {result*value}")
+                return result*value
 
     raise RuntimeError("Nobody won")
-    
-
-def main(lines: Iterable[str], part: Part = Part.ONE) -> int:
-    if part == Part.ONE:
-        print(part_one(lines))
-    else:
-        print(part_two(lines))
-
-    return 0
     
