@@ -22,6 +22,31 @@ def import_puzzle_module(year: str | int, day: str | int) -> ModuleType:
     return importlib.import_module(f".{year}.{day:02}", package=__package__)
 
 
+def download_puzzle_data(year: str | int, day: str | int):
+    import requests
+
+    input_resource = find_resource_file(year, day, Variant.INPUT)
+
+    url = f"https://adventofcode.com/{year}/day/{day}/input"
+    cookie = read_session_cookie(year)
+
+    r = requests.get(url, cookies={"session": cookie})
+    try:
+        requests.raise_for_status()
+    except:
+        raise SystemExit(f"Could not load data for {year}-12-{day}")
+    with open(input_resource, "wb") as f:
+        f.write(r.content)
+
+
+def read_session_cookie(year: str | int) -> str:
+    resource_package = f"{__package__}.{year}.resources"
+    resource_name = "session.txt"
+    session_cookie_file = importlib.resources.files(resource_package).joinpath(resource_name)
+    with open(session_cookie_file, "r") as f:
+        return f.read().strip()
+
+
 def create_line_generator(openable) -> Iterable[str]:
     def inner():
         with open(openable, "r") as f:
@@ -41,25 +66,28 @@ def resource_file_lines(
     year: str | int, day: str | int, variant: Variant
 ) -> Iterable[str]:
     resource = find_resource_file(year, day, variant)
+    if not resource.exists():
+        if variant == Variant.INPUT:
+            download_puzzle_data(year, day)
+        else:
+            raise ValueError(f"No {variant.value} file for {year}-12-{day} at {resource}")
     return create_line_generator(resource)
 
 
 def run_puzzle_func(year: str | int, day: str | int, part: Part, example_only: bool) -> int:
     puzzle_module = import_puzzle_module(year, day)
     puzzle_func = puzzle_module.part_one if part == Part.ONE else puzzle_module.part_two
-    
+
     example_result = puzzle_func(resource_file_lines(year, day, Variant.EXAMPLE))
     expected_example_result = list(resource_file_lines(year, day, Variant.EXAMPLE_RESULTS))[part.value - 1]
-    
+
     example_correct = example_result == int(expected_example_result)
     if example_only:
         success_or_fail_emoji = "\u2705" if example_correct else "\u274C"
         return f"{example_result} {success_or_fail_emoji}"
     assert example_correct, f"Failed example: {example_result} != {expected_example_result}"
-    
-    puzzle_data_resource = find_resource_file(year, day, Variant.INPUT)
-    # TODO download data if we don't have it already
-    input_lines = create_line_generator(puzzle_data_resource)
+
+    input_lines = resource_file_lines(year, day, Variant.INPUT)
     return puzzle_func(input_lines)
 
 
