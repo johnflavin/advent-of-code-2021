@@ -32,9 +32,10 @@ def download_puzzle_data(year: str | int, day: str | int):
 
     r = requests.get(url, cookies={"session": cookie})
     try:
-        requests.raise_for_status()
-    except:
-        raise SystemExit(f"Could not load data for {year}-12-{day}")
+        r.raise_for_status()
+    except requests.RequestException as e:
+        print(e.response.status_code, e.response.text)
+        raise SystemExit(f"Could not load data for {year}-12-{day:02}")
     with open(input_resource, "wb") as f:
         f.write(r.content)
 
