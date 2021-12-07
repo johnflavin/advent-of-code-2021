@@ -81,12 +81,14 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part, example_only: b
 
     example_result = puzzle_func(resource_file_lines(year, day, Variant.EXAMPLE))
     expected_example_result = list(resource_file_lines(year, day, Variant.EXAMPLE_RESULTS))[part.value - 1]
+    expected_example_result = int(expected_example_result)
 
-    example_correct = example_result == int(expected_example_result)
+    example_correct = example_result == expected_example_result
     if example_only:
+        eq = "=" if example_correct else "≠"
         success_or_fail_emoji = "\u2705" if example_correct else "\u274C"
-        return f"{example_result} {success_or_fail_emoji}"
-    assert example_correct, f"Failed example: {example_result} != {expected_example_result}"
+        return f"{example_result} {eq} {expected_example_result} {success_or_fail_emoji}"
+    assert example_correct, f"Failed example: {example_result} ≠ {expected_example_result}"
 
     input_lines = resource_file_lines(year, day, Variant.INPUT)
     return puzzle_func(input_lines)
