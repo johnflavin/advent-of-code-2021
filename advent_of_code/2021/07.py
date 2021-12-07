@@ -47,28 +47,102 @@ to the sum of all the integers from 1 to abs(x),
 i.e. abs(x)*(abs(x) + 1)/2
 """
 
+import importlib
 from collections.abc import Iterable
+from functools import cache, partial
 from numbers import Number
+from statistics import median_low
 from typing import Callable
 
+first_day = importlib.import_module(".01", __package__)
 
-def solution(lines: Iterable[str], func: Callable[[Number], Number]) -> int:
+
+StepTriple = tuple[int, int, int]
+RawFunc = Callable[[list[int], int], int]
+Func = Callable[[int], int]
+
+
+@cache
+def abs_cache(x):
+    return abs(x)
+
+
+@cache
+def sum_abs_cache(x):
+    a = abs_cache(x)
+    return int(a*(a+1)/2)
+
+
+@cache
+def func_part1(values: tuple[int], step: int) -> int:
+    return sum(abs_cache(x - step) for x in values)
+
+
+@cache
+def func_part2(values: tuple[int], step: int) -> int:
+    return sum(sum_abs_cache(x - step) for x in values)
+
+
+def func_triple(step_triple: StepTriple, func: Func) -> tuple[int, int]:
+    """check if values are increasing or decreasing for these steps,
+    or if we've found the min in the middle.
+    if increasing, we should step left. return -1 and the value
+    if decreasing, we should step right. return 1 and the value
+    if the min is in the middle we have found our value. return 0 and the value
+    
+    We return the value every time so we can keep a consistent api, even though
+    we only use the value when the step signal is 0."""
+
+    left_result, mid_result, right_result = tuple(map(func, step_triple))
+    if left_result > mid_result and right_result > mid_result:
+        return 0, mid_result
+    elif left_result > mid_result and mid_result > right_result:
+        return 1, mid_result
+    elif left_result < mid_result and mid_result < right_result:
+        return -1, mid_result
+    raise RuntimeError("Something isn't right."
+                       f"{step_triple=} {left_result=} {mid_result=} {right_result=}")
+
+
+def binary_search(step_triples: list[StepTriple], func: Func, low_idx=0, high_idx=None) -> int:
+    if high_idx is None:
+        high_idx = len(step_triples)
+    while low_idx < high_idx:
+        idx = (low_idx+high_idx)//2
+        step_triple = step_triples[idx]
+        result, value = func_triple(step_triple, func)
+        # print(f"{result=} {step_triple=} mid_value={value}")
+        if result > 0:
+            low_idx = idx + 1
+        elif result < 0:
+            high_idx = idx
+        else:
+            return value
+    return None
+
+
+def solution(lines: Iterable[str], func: RawFunc) -> int:
     input_line = next(lines)
     numbers = [int(x) for x in input_line.strip().split(",")]
 
-    min_value = float("inf")
-    for test in range(min(numbers), max(numbers) + 1):
-        value = sum(func(x - test) for x in numbers)
-        if value < min_value:
-            min_value = value
+    dressed_func = partial(func, tuple(numbers))
 
-    return min_value
+    # as a naive start, we just try every possible step value
+    # Even if some are far less likely than others
+    steps = range(min(numbers), max(numbers) + 1)
+    step_triples = list(first_day.sliding_window(steps, 3))
+
+    lowest_value = binary_search(step_triples, dressed_func)
+
+    if lowest_value is None:
+        raise RuntimeError("Something went wrong")
+
+    return lowest_value
 
 
 def part_one(lines: Iterable[str]) -> int:
-    return solution(lines, abs)
+    return solution(lines, func_part1)
+
 
 def part_two(lines: Iterable[str]) -> int:
-    func1 = lambda x: int(x*(x+1)/2)
-    func = lambda x: func1(abs(x))
-    return solution(lines, func)
+    return solution(lines, func_part2)
