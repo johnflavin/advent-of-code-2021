@@ -2,3 +2,4 @@ session.json
 *.input.*
 __pycache__
 session.txt
+.vscode
