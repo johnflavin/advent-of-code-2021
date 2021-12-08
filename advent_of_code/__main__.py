@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import importlib.resources
+import shutil
 import sys
 from datetime import datetime
 from enum import Enum
@@ -94,6 +95,28 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part, example_only: b
     return puzzle_func(input_lines)
 
 
+def setup(year: str | int, day: str | int) -> None:
+    """Create files for the next puzzle"""
+
+    year_package = f"{__package__}.{year}"
+    resource_package = f"{year_package}.resources"
+    resource_files = importlib.resources.files(resource_package)
+
+    # Create input file
+    resource_files.joinpath(f"{day:02}.{Variant.INPUT.value}.txt").touch(exist_ok=True)
+
+    # Create example file
+    resource_files.joinpath(f"{day:02}.{Variant.EXAMPLE.value}.txt").touch(exist_ok=True)
+
+    # Create example results file
+    resource_files.joinpath(f"{day:02}.{Variant.EXAMPLE_RESULTS.value}.txt").touch(exist_ok=True)
+
+    # Create day's module from module template
+    module_template = resource_files.joinpath("template.py")
+    module = importlib.resources.files(year_package).joinpath(f"{day:02}.py")
+    shutil.copy(module_template, module)
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Run Advent of Code puzzle")
     parser.add_argument(
@@ -105,6 +128,10 @@ def main(argv):
     parser.add_argument(
         "--example", action="store_true", default=False,
         help="Use the example input, not the full input"
+    )
+    parser.add_argument(
+        "--setup", action="store_true", default=False,
+        help="Set up files for next puzzle"
     )
     args = parser.parse_args(argv)
 
@@ -121,6 +148,10 @@ def main(argv):
     else:
         year, _, day = datestamp.split("-")
         
+    if args.setup:
+        setup(year, day)
+        return 0
+
     part = Part(args.part)
 
     print(run_puzzle_func(year, day, part, args.example))
