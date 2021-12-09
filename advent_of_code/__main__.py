@@ -102,9 +102,6 @@ def setup(year: str | int, day: str | int) -> None:
     resource_package = f"{year_package}.resources"
     resource_files = importlib.resources.files(resource_package)
 
-    # Create input file
-    resource_files.joinpath(f"{day:02}.{Variant.INPUT.value}.txt").touch(exist_ok=True)
-
     # Create example file
     resource_files.joinpath(f"{day:02}.{Variant.EXAMPLE.value}.txt").touch(exist_ok=True)
 
@@ -136,18 +133,18 @@ def main(argv):
     args = parser.parse_args(argv)
 
     # Determine date of puzzle to run and import main from there
-    datestamp = args.date    
+    datestamp = args.date
     if datestamp is None:
         # Use current date and time to figure out puzzle to run
         now = datetime.now()
         year = now.year
-        
+
         # Puzzles release at 12 am eastern, so 11 pm local time
         # If it's later than that we want to run tomorrow's puzzle
         day = now.day if now.hour < 23 else now.day + 1
     else:
         year, _, day = datestamp.split("-")
-        
+
     if args.setup:
         setup(year, day)
         return 0
@@ -155,7 +152,7 @@ def main(argv):
     part = Part(args.part)
 
     print(run_puzzle_func(year, day, part, args.example))
-    
+
     return 0
 
 
