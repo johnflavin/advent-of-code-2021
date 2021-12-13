@@ -4,11 +4,13 @@ import importlib.resources
 import sys
 from datetime import datetime
 from enum import Enum
-from types import ModuleType
-from typing import Iterable
+from pathlib import Path
+from typing import Iterable, cast
 
 import pyperclip
 import requests
+
+from advent_of_code import PuzzleModule
 
 
 class Part(Enum):
@@ -24,9 +26,10 @@ SUCCESS_EMOJI = "\u2705"
 FAILURE_EMOJI = "\u274C"
 
 
-def import_puzzle_module(year: str | int, day: str | int) -> ModuleType:
+def import_puzzle_module(year: str | int, day: str | int) -> PuzzleModule:
     """Find the main function for the puzzle"""
-    return importlib.import_module(f".year_{year}.day_{day:02}", package=__package__)
+    module = importlib.import_module(f".year_{year}.day_{day:02}", package=__package__)
+    return cast(PuzzleModule, module)
 
 
 def download_puzzle_data(year: str | int, day: str | int) -> bytes:
@@ -48,14 +51,17 @@ def read_session_cookie(year: str | int) -> str:
     session_cookie_file = importlib.resources.files(resource_package).joinpath(
         resource_name
     )
+    assert isinstance(session_cookie_file, Path)
     with open(session_cookie_file, "r") as f:
         return f.read().strip()
 
 
-def find_input_file(year: str | int, day: str | int) -> Iterable[str]:
+def find_input_file(year: str | int, day: str | int) -> Path:
     resource_package = f"{__package__}.year_{year}.resources"
     resource_name = f"day_{day:02}.input.txt"
-    return importlib.resources.files(resource_package).joinpath(resource_name)
+    resource = importlib.resources.files(resource_package).joinpath(resource_name)
+    assert isinstance(resource, Path)
+    return resource
 
 
 def input_file_lines(year: str | int, day: str | int) -> Iterable[str]:
@@ -65,7 +71,7 @@ def input_file_lines(year: str | int, day: str | int) -> Iterable[str]:
             f.write(download_puzzle_data(year, day))
 
     def inner():
-        with open(input_file, "r") as f:
+        with input_file.open("r") as f:
             yield from f
 
     return map(lambda l: l.strip(), inner())
