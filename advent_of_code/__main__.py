@@ -8,6 +8,7 @@ from types import ModuleType
 from typing import Iterable
 
 import pyperclip
+import requests
 
 
 class Part(Enum):
@@ -29,8 +30,6 @@ def import_puzzle_module(year: str | int, day: str | int) -> ModuleType:
 
 
 def download_puzzle_data(year: str | int, day: str | int) -> bytes:
-    import requests
-
     url = f"https://adventofcode.com/{year}/day/{day}/input"
     cookie = read_session_cookie(year)
 
