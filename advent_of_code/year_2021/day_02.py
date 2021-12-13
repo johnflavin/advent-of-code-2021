@@ -57,21 +57,21 @@ def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int,
         # print(line)
         direction, x = line.split()
         x = int(x)
-        match direction:
-            case "forward":
-                horiz += x
-                if part2:
-                    depth += aim * x
-            case "up":
-                if not part2:
-                    depth = max(depth - x, 0)
-                else:
-                    aim -= x
-            case "down":
-                if not part2:
-                    depth += x
-                else:
-                    aim += x
+
+        if direction == "forward":
+            horiz += x
+            if part2:
+                depth += aim * x
+        elif direction == "up":
+            if not part2:
+                depth = max(depth - x, 0)
+            else:
+                aim -= x
+        elif direction == "down":
+            if not part2:
+                depth += x
+            else:
+                aim += x
         # print(f"{horiz=} {depth=}")
 
     return horiz, depth

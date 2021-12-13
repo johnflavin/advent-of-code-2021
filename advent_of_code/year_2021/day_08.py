@@ -48,15 +48,15 @@ def decode_line(line: str) -> int:
 
     # First find uniques
     for cal in calibrations:
-        match len(cal):
-            case 2:
-                mapping[1] = cal
-            case 3:
-                mapping[7] = cal
-            case 4:
-                mapping[4] = cal
-            case 7:
-                mapping[8] = cal
+        len_cal = len(cal)
+        if len_cal == 2:
+            mapping[1] = cal
+        elif len_cal == 3:
+            mapping[7] = cal
+        elif len_cal == 4:
+            mapping[4] = cal
+        elif len_cal == 7:
+            mapping[8] = cal
 
     # Distinguish 6, 9, and 0
     for cal in calibrations:
