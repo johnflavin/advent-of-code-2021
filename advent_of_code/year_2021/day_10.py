@@ -128,4 +128,6 @@ def part_two(lines: Iterable[str]) -> int:
         if line and (score := find_incomplete_score(line)) is not None
     ]
 
-    return median(scores)
+    m = median(scores)
+    assert isinstance(m, int)
+    return m
