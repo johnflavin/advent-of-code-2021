@@ -13,6 +13,8 @@ Figure out which board will win last.
 """
 
 from collections.abc import Iterable
+from functools import partial
+from itertools import islice
 from typing import Optional, TypeVar
 
 
@@ -69,7 +71,7 @@ class Board:
         # print(value)
         row, col = self.unmarked_values_to_pos.pop(value, (None, None))
         if row is None or col is None:
-            return
+            return None
 
         self.marked_values_to_pos[value] = row, col
         self.row_counts[row] += 1
@@ -96,9 +98,13 @@ class Board:
 
 
 def parse_lines(lines: Iterable[str]) -> tuple[list[int], list[Board]]:
-    def chunk(iterable: Iterable[T], n: int) -> Iterable[tuple[T]]:
-        args = [iter(iterable)] * n
-        return zip(*args)
+    lines = list(lines)
+
+    def take(iterable: Iterable[T], n: int) -> list[T]:
+        return list(islice(iterable, n))
+
+    def chunk(iterable: Iterable[T], n: int) -> Iterable[list[T]]:
+        return iter(partial(take, iter(iterable), n), [])
 
     def parse_board(lines_: Iterable[str]) -> Board:
         return Board(parse_board_line(line) for line in lines_)
@@ -107,10 +113,10 @@ def parse_lines(lines: Iterable[str]) -> tuple[list[int], list[Board]]:
         return [int(value) for value in line.strip().split()]
 
     # row of draws
-    draws = [int(draw) for draw in next(lines).strip().split(",")]
+    draws = [int(draw) for draw in lines[0].strip().split(",")]
 
     # rest of lines are boards
-    boards = [parse_board(list(line_chunk[1:])) for line_chunk in chunk(lines, 6)]
+    boards = [parse_board(list(line_chunk[1:])) for line_chunk in chunk(lines[1:], 6)]
 
     return draws, boards
 
@@ -129,6 +135,7 @@ def part_two(lines: Iterable[str]) -> int:
         if len(id_board) == 0:
             break
 
+    assert result is not None
     # print(f"Board {idx}, {result}*{value} = {result*value}")
     return result * value
 

@@ -31,8 +31,8 @@ PART_TWO_EXAMPLE_RESULT = 12
 PART_ONE_RESULT = 4745
 PART_TWO_RESULT = 18442
 
-LineBounds = tuple[int]
-Point = tuple[int]
+LineBounds = tuple[int, int, int, int]
+Point = tuple[int, int]
 
 
 def parse_line(line: str) -> LineBounds:

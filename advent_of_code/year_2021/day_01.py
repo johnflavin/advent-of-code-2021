@@ -11,6 +11,10 @@ consider sums of a three-measurement sliding window
 
 import itertools
 from collections.abc import Iterable
+from typing import TypeVar
+
+
+T = TypeVar("T")
 
 
 EXAMPLE = """\
@@ -31,11 +35,11 @@ PART_ONE_RESULT = 1583
 PART_TWO_RESULT = 1627
 
 
-def count_increases(lines: list[int]) -> int:
+def count_increases(lines: Iterable[int]) -> int:
     return sum((a < b) for a, b in sliding_window(lines))
 
 
-def sliding_window(iterable, n=2):
+def sliding_window(iterable: Iterable[T], n: int = 2) -> Iterable[tuple[T, ...]]:
     """Create a new iterable sliding window over a given iterable
     Taken from
     https://napsterinblue.github.io/notes/python/internals/itertools_sliding_window/
@@ -50,11 +54,11 @@ def sliding_window(iterable, n=2):
 
 
 def part_one(lines: Iterable[str]) -> int:
-    lines = (int(x) for x in lines if x)
-    return count_increases(lines)
+    ints = (int(x) for x in lines if x)
+    return count_increases(ints)
 
 
 def part_two(lines: Iterable[str]) -> int:
-    lines = (int(x) for x in lines if x)
-    lines = (sum(window) for window in sliding_window(lines, 3))
-    return count_increases(lines)
+    ints = (int(x) for x in lines if x)
+    ints = (sum(window) for window in sliding_window(ints, 3))
+    return count_increases(ints)

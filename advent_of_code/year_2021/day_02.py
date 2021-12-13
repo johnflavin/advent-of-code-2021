@@ -55,8 +55,8 @@ def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int,
         if not line:
             continue
         # print(line)
-        direction, x = line.split()
-        x = int(x)
+        direction, d = line.split()
+        x = int(d)
 
         if direction == "forward":
             horiz += x

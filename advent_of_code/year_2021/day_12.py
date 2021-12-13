@@ -32,7 +32,7 @@ PART_TWO_RESULT = 123054
 
 
 Node = str
-Graph = dict[Node : set[Node]]
+Graph = dict[Node, set[Node]]
 Path = list[Node]
 
 START = "start"

@@ -17,6 +17,7 @@ What do you get if you multiply together the sizes of the three largest basins?
 
 from collections.abc import Callable, Iterable
 from functools import cache, partial
+from typing import Tuple
 
 
 EXAMPLE = """\
@@ -33,9 +34,15 @@ PART_TWO_RESULT = 931200
 
 Pt = tuple[int, int]
 Neighbors = Iterable[Pt]
-Heights = tuple[tuple[int]]
 NeighborsFunc = Callable[[Pt], Neighbors]
 Basin = list[Pt]
+
+# Using typing.Tuple rather than tuple
+# mypy gave me error when I used tuple that it doesn't support "...",
+#  but if I left off "..." it gave me an error later
+#  that I was returning a Tuple[Tuple[int, ...], ...] when it expected
+#  a Tuple[Tuple[int]]
+Heights = Tuple[Tuple[int, ...], ...]
 
 
 @cache
@@ -106,7 +113,7 @@ def process_lines(lines: Iterable[str]) -> tuple[Heights, NeighborsFunc]:
 
 def low_points(
     heights: Heights, neighbors_func: NeighborsFunc
-) -> Iterable[tuple[Pt], int]:
+) -> Iterable[tuple[Pt, int]]:
 
     for row_idx, row in enumerate(heights):
         for col_idx, value in enumerate(row):

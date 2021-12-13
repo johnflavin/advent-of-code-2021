@@ -80,12 +80,12 @@ def fold_y(pt: Pt, value: int) -> Pt:
 
 
 def parse(lines: Iterable[str]) -> tuple[list[Pt], list[FoldFunc]]:
-    pts = []
+    pts: list[Pt] = []
     for line in lines:
         if not line:
             break
         pts.append(Pt.from_line(line))
-    folds = []
+    folds: list[FoldFunc] = []
     for line in lines:
         if not line:
             continue
