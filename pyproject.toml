@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "advent-of-code"
+version = "0.1.0"
+description = "Solutions to Advent of Code puzzles. https://adventofcode.com"
+authors = ["John Flavin"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.26.0"
+pyperclip = "^1.8.2"
+
+[tool.poetry.dev-dependencies]
+black = "^21.12b0"
+pytest = "^6.2.5"
+pre-commit = "^2.16.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
