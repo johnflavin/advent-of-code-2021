@@ -42,9 +42,9 @@ def part_one(lines: Iterable[str]) -> int:
 
 
 def decode_line(line: str) -> int:
-    calibrations, outputs = line.split(" | ")
-    calibrations = [set(cal) for cal in calibrations.split()]
-    mapping = [""] * 10
+    calibrations_str, outputs = line.split(" | ")
+    calibrations = [set(cal) for cal in calibrations_str.split()]
+    mapping = [set("")] * 10
 
     # First find uniques
     for cal in calibrations:
