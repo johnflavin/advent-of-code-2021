@@ -72,7 +72,7 @@ def input_file_lines(
     return map(lambda l: l.strip(), inner())
 
 
-def puzzle_result_output(expected: int, actual: int) -> tuple[str, bool]:
+def puzzle_result_output(expected: int | str, actual: int | str) -> tuple[str, bool]:
     correct = expected == actual
     eq = "=" if correct else "≠"
     emoji = SUCCESS_EMOJI if correct else FAILURE_EMOJI
@@ -84,10 +84,7 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
     puzzle_func = puzzle_module.part_one if part == Part.ONE else puzzle_module.part_two
 
     example = iter(puzzle_module.EXAMPLE.split("\n"))
-    try:
-        expected_example_result = puzzle_module.PART_ONE_EXAMPLE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_EXAMPLE_RESULT
-    except AttributeError:
-        raise PuzzleError(f"No example output for {year}-12-{day:02} part {part}")
+    expected_example_result = puzzle_module.PART_ONE_EXAMPLE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_EXAMPLE_RESULT
 
     actual_example_result = puzzle_func(example)
     example_output, example_is_correct = puzzle_result_output(expected_example_result, actual_example_result)
@@ -97,14 +94,15 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
 
     puzzle = input_file_lines(year, day)
     actual_puzzle_result = puzzle_func(puzzle)
-    try:
-        expected_puzzle_result = puzzle_module.PART_ONE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_RESULT
-    except AttributeError:
-        expected_puzzle_result = None
+    expected_puzzle_result = puzzle_module.PART_ONE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_RESULT
 
     if expected_puzzle_result is None:
-        pyperclip.copy(actual_puzzle_result)
-        puzzle_output = f"Puzzle: {actual_puzzle_result} copied to clipboard"
+        if actual_puzzle_result is not None:
+            pyperclip.copy(actual_puzzle_result)
+            puzzle_output = f"Puzzle result copied to clipboard: {actual_puzzle_result}"
+        else:
+            # Assume that if the function returns None we printed something
+            puzzle_output = ""
         exit_code = 0
     else:
         puzzle_output, puzzle_is_correct = puzzle_result_output(expected_puzzle_result, actual_puzzle_result)
