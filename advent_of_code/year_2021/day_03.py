@@ -158,8 +158,8 @@ def part_one(lines: Iterable[str]) -> int:
 def partition(
     numbers: Iterable[str], position: int = 0, most_common: bool = True
 ) -> Iterable[str]:
-    zeros = []
-    ones = []
+    zeros: list[str] = []
+    ones: list[str] = []
     for num in numbers:
         (zeros if num[position] == "0" else ones).append(num)
 
@@ -177,11 +177,11 @@ def part_two(lines: Iterable[str]) -> int:
 
     num_bits = len(lines[0])
     for pos in range(num_bits):
-        o2_vals = partition(o2_vals, pos, most_common=True)
+        o2_vals = list(partition(o2_vals, pos, most_common=True))
         if len(o2_vals) == 1:
             break
     for pos in range(num_bits):
-        co2_vals = partition(co2_vals, pos, most_common=False)
+        co2_vals = list(partition(co2_vals, pos, most_common=False))
         if len(co2_vals) == 1:
             break
     o2 = int("".join(o2_vals[0]), base=2)
