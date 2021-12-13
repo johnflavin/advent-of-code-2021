@@ -25,7 +25,7 @@ FAILURE_EMOJI = "\u274C"
 
 def import_puzzle_module(year: str | int, day: str | int) -> ModuleType:
     """Find the main function for the puzzle"""
-    return importlib.import_module(f".{year}.{day:02}", package=__package__)
+    return importlib.import_module(f".year_{year}.day_{day:02}", package=__package__)
 
 
 def download_puzzle_data(year: str | int, day: str | int) -> bytes:
@@ -54,8 +54,8 @@ def read_session_cookie(year: str | int) -> str:
 
 
 def find_input_file(year: str | int, day: str | int) -> Iterable[str]:
-    resource_package = f"{__package__}.{year}.resources"
-    resource_name = f"{day:02}.input.txt"
+    resource_package = f"{__package__}.year_{year}.resources"
+    resource_name = f"day_{day:02}.input.txt"
     return importlib.resources.files(resource_package).joinpath(resource_name)
 
 

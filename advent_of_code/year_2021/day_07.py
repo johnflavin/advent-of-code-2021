@@ -51,10 +51,11 @@ to the sum of all the integers from 1 to abs(x),
 i.e. abs(x)*(abs(x) + 1)/2
 """
 
-import importlib
 from collections.abc import Iterable
 from functools import cache, partial
 from typing import Callable
+
+from .day_01 import sliding_window
 
 
 EXAMPLE = """\
@@ -64,8 +65,6 @@ PART_ONE_EXAMPLE_RESULT = 37
 PART_TWO_EXAMPLE_RESULT = 168
 PART_ONE_RESULT = 348664
 PART_TWO_RESULT = 100220525
-
-first_day = importlib.import_module(".01", __package__)
 
 
 StepTriple = tuple[int, int, int]
@@ -145,7 +144,7 @@ def solution(lines: Iterable[str], func: RawFunc) -> int:
     # as a naive start, we just try every possible step value
     # Even if some are far less likely than others
     steps = range(min(numbers), max(numbers) + 1)
-    step_triples = list(first_day.sliding_window(steps, 3))
+    step_triples = list(sliding_window(steps, 3))
 
     lowest_value = binary_search(step_triples, dressed_func)
 
