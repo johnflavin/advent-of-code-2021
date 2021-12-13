@@ -8,3 +8,4 @@ repos:
     rev: 3.9.2
     hooks:
     -   id: flake8
+        args: [--per-file-ignores=__init__.py:F401]
