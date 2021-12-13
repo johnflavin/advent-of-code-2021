@@ -2,7 +2,11 @@
 """
 Bingo
 
-The score of the winning board can now be calculated. Start by finding the sum of all unmarked numbers on that board; in this case, the sum is 188. Then, multiply that sum by the number that was just called when the board won, 24, to get the final score, 188 * 24 = 4512.
+The score of the winning board can now be calculated.
+Start by finding the sum of all unmarked numbers on that board;
+in this case, the sum is 188.
+Then, multiply that sum by the number that was just called when the board won, 24,
+to get the final score, 188 * 24 = 4512.
 
 Part 2
 Figure out which board will win last.
@@ -12,6 +16,33 @@ from collections.abc import Iterable
 from itertools import islice
 from typing import Optional, TypeVar
 
+
+EXAMPLE = """\
+7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
+
+22 13 17 11  0
+ 8  2 23  4 24
+21  9 14 16  7
+ 6 10  3 18  5
+ 1 12 20 15 19
+
+ 3 15  0  2 22
+ 9 18 13 17  5
+19  8  7 25 23
+20 11 10 24  4
+14 21 16 12  6
+
+14 21 17 24  4
+10 16 15  9 19
+18  8 23 26 20
+22 11 13  6  5
+ 2  0 12  3  7
+"""
+PART_ONE_EXAMPLE_RESULT = 4512
+PART_TWO_EXAMPLE_RESULT = 1924
+PART_ONE_RESULT = 39902
+PART_TWO_RESULT = 26936
+
 T = TypeVar("T")
 
 
@@ -20,7 +51,7 @@ class Board:
     marked_values_to_pos: dict[int, tuple[int, int]]
     row_counts: list[int]
     col_counts: list[int]
-    
+
     def __init__(self, lines: Iterable[list[int]]):
         self.unmarked_values_to_pos = {}
         self.marked_values_to_pos = {}
@@ -31,30 +62,29 @@ class Board:
             # print(row, line)
             for col, value in enumerate(line):
                 self.unmarked_values_to_pos[value] = (row, col)
-                
+
         # print(self)
-                
+
     def mark(self, value: int) -> Optional[int]:
         # print(self.unmarked_values_to_pos)
         # print(value)
         row, col = self.unmarked_values_to_pos.pop(value, (None, None))
         if row is None or col is None:
             return
-            
+
         self.marked_values_to_pos[value] = row, col
         self.row_counts[row] += 1
         self.col_counts[col] += 1
-        
+
         if self.row_counts[row] == 5 or self.col_counts[col] == 5:
-            return self.calculate_win(value)
-        
+            # Win!
+            # print(self)
+            return sum(self.unmarked_values_to_pos.keys())
+
         return None
-        
-    def calculate_win(self, value: int):
-        return sum(self.unmarked_values_to_pos.keys())
-        
+
     def __str__(self):
-        empty_line = ["-"]*6
+        empty_line = [" -  "]*6
         first_line = [" "] + [f"{cc: ^4}" for cc in self.col_counts]
         lines = [first_line] + [list(empty_line) for _ in range(5)]
         for row, row_count in enumerate(self.row_counts, 1):
@@ -67,27 +97,27 @@ class Board:
 
 
 def parse_lines(lines: Iterable[str]) -> tuple[list[int], list[Board]]:
-    
+
     def chunk(iterable: Iterable[T], n: int) -> Iterable[tuple[T]]:
         args = [iter(iterable)]*n
         return zip(*args)
-    
+
     def parse_board(lines_: Iterable[str]) -> Board:
         return Board(parse_board_line(line) for line in lines_)
 
     def parse_board_line(line: str) -> list[int]:
         return [int(value) for value in line.strip().split()]
-    
+
     # row of draws
     draws = [int(draw) for draw in next(lines).strip().split(",")]
-    
+
     # rest of lines are boards
     boards = [parse_board(list(line_chunk[1:])) for line_chunk in chunk(lines, 6)]
-    
+
     return draws, boards
 
 def part_two(lines: Iterable[str]) -> int:
-    
+
     draws, boards = parse_lines(lines)
     id_board = dict(enumerate(boards, 1))
 
@@ -106,7 +136,7 @@ def part_two(lines: Iterable[str]) -> int:
 
 def part_one(lines: Iterable[str]) -> int:
     draws, boards = parse_lines(lines)
-    
+
     for value in draws:
         for idx, board in enumerate(boards, 1):
             result = board.mark(value)
@@ -115,4 +145,3 @@ def part_one(lines: Iterable[str]) -> int:
                 return result*value
 
     raise RuntimeError("Nobody won")
-    

@@ -40,6 +40,24 @@ from collections.abc import Iterable
 from statistics import median
 
 
+EXAMPLE = """\
+[({(<(())[]>[[{[]{<()<>>
+[(()[<>])]({[<{<<[]>>(
+{([(<{}[<>[]}>{[]{[(<()>
+(((({<>}<{<{<>}{[]{[]{}
+[[<[([]))<([[{}[[()]]]
+[{[{({}]{}}([{[{{{}}([]
+{<[[]]>}<{[{[{[]{()[[[]
+[<(<(<(<{}))><([]([]()
+<{([([[(<>()){}]>(<<{{
+<{([{{}}[<[[[<>{}]]]>[]]
+"""
+PART_ONE_EXAMPLE_RESULT = 26397
+PART_TWO_EXAMPLE_RESULT = 288957
+PART_ONE_RESULT = 411471
+PART_TWO_RESULT = 3122628974
+
+
 ILLEGAL_SCORES = {
     ")": 3,
     "]": 57,
@@ -78,7 +96,7 @@ def find_illegal_score(line: str) -> int:
     return 0
 
 def part_one(lines: Iterable[str]) -> int:
-    return sum(find_illegal_score(line) for line in lines)
+    return sum(find_illegal_score(line) for line in lines if line)
 
 
 def find_incomplete_score(line: str) -> int | None:
@@ -103,7 +121,7 @@ def find_incomplete_score(line: str) -> int | None:
 def part_two(lines: Iterable[str]) -> int:
     scores = [
         score for line in lines
-        if (score := find_incomplete_score(line)) is not None
+        if line and (score := find_incomplete_score(line)) is not None
     ]
 
     return median(scores)

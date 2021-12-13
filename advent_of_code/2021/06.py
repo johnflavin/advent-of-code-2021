@@ -12,6 +12,15 @@ from collections import Counter
 from collections.abc import Iterable
 
 
+EXAMPLE = """\
+3,4,3,1,2
+"""
+PART_ONE_EXAMPLE_RESULT = 5934
+PART_TWO_EXAMPLE_RESULT = 26984457539
+PART_ONE_RESULT = 362740
+PART_TWO_RESULT = 1644874076764
+
+
 def solution(lines: Iterable[str], num_days: int) -> int:
     line = next(lines)
 
@@ -34,13 +43,13 @@ def solution(lines: Iterable[str], num_days: int) -> int:
     for _ in range(num_days):
         # all ticks at zero will spawn
         num_spawn = state[0]
-        
+
         # drop the count at tick n to tick n-1 for n > 0
         state[:8] = state[1:]
-        
+
         # Spawn new at tick = 8
         state[8] = num_spawn
-        
+
         # After spawn, reset ticks at 0 back to 6
         state[6] += num_spawn
 

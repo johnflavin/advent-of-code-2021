@@ -54,6 +54,15 @@ from numbers import Number
 from statistics import median_low
 from typing import Callable
 
+
+EXAMPLE = """\
+16,1,2,0,4,2,7,1,2,14
+"""
+PART_ONE_EXAMPLE_RESULT = 37
+PART_TWO_EXAMPLE_RESULT = 168
+PART_ONE_RESULT = 348664
+PART_TWO_RESULT = 100220525
+
 first_day = importlib.import_module(".01", __package__)
 
 
@@ -89,7 +98,7 @@ def func_triple(step_triple: StepTriple, func: Func) -> tuple[int, int]:
     if increasing, we should step left. return -1 and the value
     if decreasing, we should step right. return 1 and the value
     if the min is in the middle we have found our value. return 0 and the value
-    
+
     We return the value every time so we can keep a consistent api, even though
     we only use the value when the step signal is 0."""
 

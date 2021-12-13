@@ -1,21 +1,25 @@
 import argparse
 import importlib
 import importlib.resources
-import shutil
 import sys
 from datetime import datetime
 from enum import Enum
 from types import ModuleType
 from typing import Iterable
 
-class Variant(Enum):
-    INPUT = "input"
-    EXAMPLE = "example"
-    EXAMPLE_RESULTS = "example_results"
+import pyperclip
 
 class Part(Enum):
     ONE = 1
     TWO = 2
+
+
+class PuzzleError(Exception):
+    pass
+
+
+SUCCESS_EMOJI = "\u2705"
+FAILURE_EMOJI = "\u274C"
 
 
 def import_puzzle_module(year: str | int, day: str | int) -> ModuleType:
@@ -23,10 +27,8 @@ def import_puzzle_module(year: str | int, day: str | int) -> ModuleType:
     return importlib.import_module(f".{year}.{day:02}", package=__package__)
 
 
-def download_puzzle_data(year: str | int, day: str | int):
+def download_puzzle_data(year: str | int, day: str | int) -> bytes:
     import requests
-
-    input_resource = find_resource_file(year, day, Variant.INPUT)
 
     url = f"https://adventofcode.com/{year}/day/{day}/input"
     cookie = read_session_cookie(year)
@@ -37,8 +39,7 @@ def download_puzzle_data(year: str | int, day: str | int):
     except requests.RequestException as e:
         print(e.response.status_code, e.response.text)
         raise SystemExit(f"Could not load data for {year}-12-{day:02}")
-    with open(input_resource, "wb") as f:
-        f.write(r.content)
+    return r.content
 
 
 def read_session_cookie(year: str | int) -> str:
@@ -49,50 +50,68 @@ def read_session_cookie(year: str | int) -> str:
         return f.read().strip()
 
 
-def create_line_generator(openable) -> Iterable[str]:
+def find_input_file(
+    year: str | int, day: str | int
+) -> Iterable[str]:
+    resource_package = f"{__package__}.{year}.resources"
+    resource_name = f"{day:02}.input.txt"
+    return importlib.resources.files(resource_package).joinpath(resource_name)
+
+
+def input_file_lines(
+    year: str | int, day: str | int
+) -> Iterable[str]:
+    input_file = find_input_file(year, day)
+    if not input_file.exists():
+        with open(input_file, "wb") as f:
+            f.write(download_puzzle_data(year, day))
+
     def inner():
-        with open(openable, "r") as f:
+        with open(input_file, "r") as f:
             yield from f
     return map(lambda l: l.strip(), inner())
 
 
-def find_resource_file(
-    year: str | int, day: str | int, variant: Variant
-) -> Iterable[str]:
-    resource_package = f"{__package__}.{year}.resources"
-    resource_name = f"{day:02}.{variant.value}.txt"
-    return importlib.resources.files(resource_package).joinpath(resource_name)
+def puzzle_result_output(expected: int, actual: int) -> tuple[str, bool]:
+    correct = expected == actual
+    eq = "=" if correct else "≠"
+    emoji = SUCCESS_EMOJI if correct else FAILURE_EMOJI
+    return f"actual {actual} {eq} expected {expected} {emoji}", correct
 
 
-def resource_file_lines(
-    year: str | int, day: str | int, variant: Variant
-) -> Iterable[str]:
-    resource = find_resource_file(year, day, variant)
-    if not resource.exists():
-        if variant == Variant.INPUT:
-            download_puzzle_data(year, day)
-        else:
-            raise ValueError(f"No {variant.value} file for {year}-12-{day} at {resource}")
-    return create_line_generator(resource)
-
-
-def run_puzzle_func(year: str | int, day: str | int, part: Part, example_only: bool) -> int:
+def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, int]:
     puzzle_module = import_puzzle_module(year, day)
     puzzle_func = puzzle_module.part_one if part == Part.ONE else puzzle_module.part_two
 
-    example_result = puzzle_func(resource_file_lines(year, day, Variant.EXAMPLE))
-    expected_example_result = list(resource_file_lines(year, day, Variant.EXAMPLE_RESULTS))[part.value - 1]
-    expected_example_result = int(expected_example_result)
+    example = iter(puzzle_module.EXAMPLE.split("\n"))
+    try:
+        expected_example_result = puzzle_module.PART_ONE_EXAMPLE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_EXAMPLE_RESULT
+    except AttributeError:
+        raise PuzzleError(f"No example output for {year}-12-{day:02} part {part}")
 
-    example_correct = example_result == expected_example_result
-    if example_only:
-        eq = "=" if example_correct else "≠"
-        success_or_fail_emoji = "\u2705" if example_correct else "\u274C"
-        return f"{example_result} {eq} {expected_example_result} {success_or_fail_emoji}"
-    assert example_correct, f"Failed example: {example_result} ≠ {expected_example_result}"
+    actual_example_result = puzzle_func(example)
+    example_output, example_is_correct = puzzle_result_output(expected_example_result, actual_example_result)
+    example_output = f"Example: {example_output}"
+    if not example_is_correct:
+        return example_output, 1
 
-    input_lines = resource_file_lines(year, day, Variant.INPUT)
-    return puzzle_func(input_lines)
+    puzzle = input_file_lines(year, day)
+    actual_puzzle_result = puzzle_func(puzzle)
+    try:
+        expected_puzzle_result = puzzle_module.PART_ONE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_RESULT
+    except AttributeError:
+        expected_puzzle_result = None
+
+    if expected_puzzle_result is None:
+        pyperclip.copy(actual_puzzle_result)
+        puzzle_output = f"Puzzle: {actual_puzzle_result} copied to clipboard"
+        exit_code = 0
+    else:
+        puzzle_output, puzzle_is_correct = puzzle_result_output(expected_puzzle_result, actual_puzzle_result)
+        puzzle_output = f"Puzzle: {puzzle_output}"
+        exit_code = not puzzle_is_correct
+
+    return f"Part {part.value}\n{example_output}\n{puzzle_output}", exit_code
 
 
 def main(argv):
@@ -102,10 +121,6 @@ def main(argv):
     )
     parser.add_argument(
         "--date", type=str, default=None, required=False, help="Datestamp of puzzle to run (default today)"
-    )
-    parser.add_argument(
-        "--example", action="store_true", default=False,
-        help="Use the example input, not the full input"
     )
     args = parser.parse_args(argv)
 
@@ -124,9 +139,10 @@ def main(argv):
 
     part = Part(args.part)
 
-    print(run_puzzle_func(year, day, part, args.example))
+    output_str, exit_code = run_puzzle_func(year, day, part)
+    print(output_str)
 
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":

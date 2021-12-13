@@ -18,6 +18,19 @@ What do you get if you multiply together the sizes of the three largest basins?
 from collections.abc import Callable, Iterable
 from functools import cache, partial
 
+
+EXAMPLE = """\
+2199943210
+3987894921
+9856789892
+8767896789
+9899965678
+"""
+PART_ONE_EXAMPLE_RESULT = 15
+PART_TWO_EXAMPLE_RESULT = 1134
+PART_ONE_RESULT = 506
+PART_TWO_RESULT = 931200
+
 Pt = tuple[int, int]
 Neighbors = Iterable[Pt]
 Heights = tuple[tuple[int]]
@@ -80,7 +93,7 @@ def neighbor_indices(pt: Pt, max_row_idx: int, max_col_idx: int) -> Neighbors:
 
 
 def process_lines(lines: Iterable[str]) -> tuple[Heights, NeighborsFunc]:
-    heights = tuple(tuple(int(x) for x in line) for line in lines)
+    heights = tuple(tuple(int(x) for x in line) for line in lines if line)
 
     num_rows = len(heights)
     num_cols = len(heights[0])

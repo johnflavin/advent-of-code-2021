@@ -2,8 +2,18 @@
 """
 https://adventofcode.com/2021/day/1
 
-suppose you had the following report:
+part 1
+count the number of times a depth measurement increases from the previous measurement
 
+PART 2
+consider sums of a three-measurement sliding window
+"""
+
+import itertools
+from collections.abc import Iterable
+
+
+EXAMPLE = """\
 199
 200
 208
@@ -14,19 +24,11 @@ suppose you had the following report:
 269
 260
 263
-
-count the number of times a depth measurement increases from the previous measurement
-
-PART 2
-consider sums of a three-measurement sliding window
-
-Usage:
-    python 2021-12-01.py 2021-12-01.input.txt [window]
 """
-
-import itertools
-import sys
-from collections.abc import Iterable
+PART_ONE_EXAMPLE_RESULT = 7
+PART_TWO_EXAMPLE_RESULT = 5
+PART_ONE_RESULT = 1583
+PART_TWO_RESULT = 1627
 
 
 def count_increases(lines: list[int]) -> int:
@@ -38,20 +40,20 @@ def sliding_window(iterable, n=2):
     Taken from https://napsterinblue.github.io/notes/python/internals/itertools_sliding_window/
     """
     iterables = itertools.tee(iterable, n)
-    
+
     for iterable, num_skipped in zip(iterables, itertools.count()):
         for _ in range(num_skipped):
             next(iterable, None)
-    
+
     return zip(*iterables)
 
 
 def part_one(lines: Iterable[str]) -> int:
-    lines = map(int, lines)
+    lines = (int(x) for x in lines if x)
     return count_increases(lines)
 
 
 def part_two(lines: Iterable[str]) -> int:
-    lines = map(int, lines)
+    lines = (int(x) for x in lines if x)
     lines = (sum(window) for window in sliding_window(lines, 3))
     return count_increases(lines)

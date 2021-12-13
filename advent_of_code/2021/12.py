@@ -16,6 +16,21 @@ from collections import defaultdict
 from collections.abc import Iterable
 
 
+EXAMPLE = """\
+start-A
+start-b
+A-c
+A-b
+b-d
+A-end
+b-end
+"""
+PART_ONE_EXAMPLE_RESULT = 10
+PART_TWO_EXAMPLE_RESULT = 36
+PART_ONE_RESULT = 4749
+PART_TWO_RESULT = 123054
+
+
 Node = str
 Graph = dict[Node: set[Node]]
 Path = list[Node]
@@ -27,6 +42,8 @@ END = "end"
 def build_graph(lines: Iterable[str]) -> Graph:
     graph: Graph = defaultdict(lambda: set())
     for line in lines:
+        if not line:
+            continue
         left, right = line.split("-")
         if right != START and left != END:
             graph[left].add(right)

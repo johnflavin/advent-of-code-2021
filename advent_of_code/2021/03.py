@@ -75,9 +75,29 @@ Use the binary numbers in your diagnostic report to calculate the oxygen generat
 from collections import Counter
 from collections.abc import Iterable
 
+
+EXAMPLE = """\
+00100
+11110
+10110
+10111
+10101
+01111
+00111
+11100
+10000
+11001
+00010
+01010
+"""
+PART_ONE_EXAMPLE_RESULT = 198
+PART_TWO_EXAMPLE_RESULT = 230
+PART_ONE_RESULT = 2595824
+PART_TWO_RESULT = 2135254
+
 def part_one(lines: Iterable[str]) -> int:
     def most_common_bits():
-        for bit_iter in zip(*(l.strip() for l in lines)):
+        for bit_iter in zip(*(l.strip() for l in lines if l)):
             c = Counter(bit_iter)
             [(most_common_bit, _)] = c.most_common(1)
             yield most_common_bit
@@ -98,13 +118,13 @@ def partition(numbers: Iterable[str], position: int = 0, most_common: bool = Tru
         return ones if most_common else zeros
     else:
         return ones if (len(zeros) > len(ones)) ^ most_common else zeros
-    
+
 
 def part_two(lines: Iterable[str]) -> int:
-    lines = list(lines)
+    lines = [l for l in lines if l]
     o2_vals = lines
     co2_vals = lines
-    
+
     num_bits = len(lines[0])
     for pos in range(num_bits):
         o2_vals = partition(o2_vals, pos, most_common=True)

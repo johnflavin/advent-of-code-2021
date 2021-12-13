@@ -23,6 +23,24 @@ from collections.abc import Callable, Iterable
 from functools import cache, partial
 from itertools import product
 
+
+EXAMPLE = """\
+5483143223
+2745854711
+5264556173
+6141336146
+6357385478
+4167524645
+2176841721
+6882881134
+4846848554
+5283751526
+"""
+PART_ONE_EXAMPLE_RESULT = 1656
+PART_TWO_EXAMPLE_RESULT = 195
+PART_ONE_RESULT = 1642
+PART_TWO_RESULT = 320
+
 Pt = tuple[int, int]
 Neighbors = Iterable[Pt]
 NeighborsFunc = Callable[[Pt], Neighbors]
@@ -144,7 +162,7 @@ def update_and_flash(values: Values, neighbors_func: NeighborsFunc) -> int:
 
 
 def setup(lines: Iterable[str]) -> tuple[Values, NeighborsFunc, int]:
-    values = [[int(x) for x in line] for line in lines]
+    values = [[int(x) for x in line] for line in lines if line]
     num_rows = len(values)
     num_cols = len(values[0])
     neighbors_func = partial(
