@@ -52,8 +52,8 @@ i.e. abs(x)*(abs(x) + 1)/2
 """
 
 from collections.abc import Iterable
-from functools import cache, partial
-from typing import Callable
+from functools import partial
+from typing import Callable, cast
 
 from .day_01 import sliding_window
 
@@ -68,29 +68,21 @@ PART_TWO_RESULT = 100220525
 
 
 StepTriple = tuple[int, int, int]
-RawFunc = Callable[[list[int], int], int]
+RawFunc = Callable[[Iterable[int], int], int]
 Func = Callable[[int], int]
 
 
-@cache
-def abs_cache(x):
-    return abs(x)
-
-
-@cache
-def sum_abs_cache(x):
-    a = abs_cache(x)
+def sum_abs(x):
+    a = abs(x)
     return int(a * (a + 1) / 2)
 
 
-@cache
-def func_part1(values: tuple[int], step: int) -> int:
-    return sum(abs_cache(x - step) for x in values)
+def func_part1(values: Iterable[int], step: int) -> int:
+    return sum(abs(x - step) for x in values)
 
 
-@cache
-def func_part2(values: tuple[int], step: int) -> int:
-    return sum(sum_abs_cache(x - step) for x in values)
+def func_part2(values: Iterable[int], step: int) -> int:
+    return sum(sum_abs(x - step) for x in values)
 
 
 def func_triple(step_triple: StepTriple, func: Func) -> tuple[int, int]:
@@ -118,7 +110,7 @@ def func_triple(step_triple: StepTriple, func: Func) -> tuple[int, int]:
 
 def binary_search(
     step_triples: list[StepTriple], func: Func, low_idx=0, high_idx=None
-) -> int:
+) -> int | None:
     if high_idx is None:
         high_idx = len(step_triples)
     while low_idx < high_idx:
@@ -136,7 +128,7 @@ def binary_search(
 
 
 def solution(lines: Iterable[str], func: RawFunc) -> int:
-    input_line = next(lines)
+    input_line = next(iter(lines))
     numbers = [int(x) for x in input_line.strip().split(",")]
 
     dressed_func = partial(func, tuple(numbers))
@@ -144,7 +136,7 @@ def solution(lines: Iterable[str], func: RawFunc) -> int:
     # as a naive start, we just try every possible step value
     # Even if some are far less likely than others
     steps = range(min(numbers), max(numbers) + 1)
-    step_triples = list(sliding_window(steps, 3))
+    step_triples = cast(list[StepTriple], list(sliding_window(steps, 3)))
 
     lowest_value = binary_search(step_triples, dressed_func)
 
