@@ -22,7 +22,7 @@ PART_TWO_RESULT = 1644874076764
 
 
 def solution(lines: Iterable[str], num_days: int) -> int:
-    line = next(lines)
+    line = next(iter(lines))
 
     # Convert line to int
     # This is of len = initial num fish
