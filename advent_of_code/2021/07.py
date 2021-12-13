@@ -3,9 +3,12 @@
 For example, consider the following horizontal positions:
 
 16,1,2,0,4,2,7,1,2,14
-This means there's a crab with horizontal position 16, a crab with horizontal position 1, and so on.
+This means there's a crab with horizontal position 16, a crab with horizontal
+position 1, and so on.
 
-Each change of 1 step in horizontal position of a single crab costs 1 fuel. You could choose any horizontal position to align them all on, but the one that costs the least fuel is horizontal position 2:
+Each change of 1 step in horizontal position of a single crab costs 1 fuel. You could
+choose any horizontal position to align them all on, but the one that costs the least
+fuel is horizontal position 2:
 
 Move from 16 to 2: 14 fuel
 Move from 1 to 2: 1 fuel
@@ -40,7 +43,8 @@ And we minimize using Least Absolute Deviations rather than Least Squares.
 through and try different things.
 
 part 2:
-each change of 1 step in horizontal position costs 1 more unit of fuel than the last: the first step costs 1, the second step costs 2, the third step costs 3, and so on.
+each change of 1 step in horizontal position costs 1 more unit of fuel than the last:
+the first step costs 1, the second step costs 2, the third step costs 3, and so on.
 
 Just change the error function from abs(x)
 to the sum of all the integers from 1 to abs(x),
@@ -50,8 +54,6 @@ i.e. abs(x)*(abs(x) + 1)/2
 import importlib
 from collections.abc import Iterable
 from functools import cache, partial
-from numbers import Number
-from statistics import median_low
 from typing import Callable
 
 
@@ -79,7 +81,7 @@ def abs_cache(x):
 @cache
 def sum_abs_cache(x):
     a = abs_cache(x)
-    return int(a*(a+1)/2)
+    return int(a * (a + 1) / 2)
 
 
 @cache
@@ -109,15 +111,19 @@ def func_triple(step_triple: StepTriple, func: Func) -> tuple[int, int]:
         return 1, mid_result
     elif left_result < mid_result and mid_result < right_result:
         return -1, mid_result
-    raise RuntimeError("Something isn't right."
-                       f"{step_triple=} {left_result=} {mid_result=} {right_result=}")
+    raise RuntimeError(
+        "Something isn't right."
+        f"{step_triple=} {left_result=} {mid_result=} {right_result=}"
+    )
 
 
-def binary_search(step_triples: list[StepTriple], func: Func, low_idx=0, high_idx=None) -> int:
+def binary_search(
+    step_triples: list[StepTriple], func: Func, low_idx=0, high_idx=None
+) -> int:
     if high_idx is None:
         high_idx = len(step_triples)
     while low_idx < high_idx:
-        idx = (low_idx+high_idx)//2
+        idx = (low_idx + high_idx) // 2
         step_triple = step_triples[idx]
         result, value = func_triple(step_triple, func)
         # print(f"{result=} {step_triple=} mid_value={value}")

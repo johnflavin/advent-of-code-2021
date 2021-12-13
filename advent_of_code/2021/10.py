@@ -25,7 +25,8 @@ sequence of closing characters that complete all open chunks in the line.
 
 The score is determined by considering the completion string character-by-character.
 Start with a total score of 0. Then, for each character, multiply the total score by 5
-and then increase the total score by the point value given for the character in the following table:
+and then increase the total score by the point value given for the character in the
+following table:
 
 ): 1 point.
 ]: 2 points.
@@ -95,6 +96,7 @@ def find_illegal_score(line: str) -> int:
     # If we got here, we didn't find anything illegal
     return 0
 
+
 def part_one(lines: Iterable[str]) -> int:
     return sum(find_illegal_score(line) for line in lines if line)
 
@@ -115,12 +117,14 @@ def find_incomplete_score(line: str) -> int | None:
     score = 0
     for opener in reversed(stack):
         closer_score = INCOMPLETE_SCORES[opener]
-        score = score*5 + closer_score
+        score = score * 5 + closer_score
     return score
+
 
 def part_two(lines: Iterable[str]) -> int:
     scores = [
-        score for line in lines
+        score
+        for line in lines
         if line and (score := find_incomplete_score(line)) is not None
     ]
 

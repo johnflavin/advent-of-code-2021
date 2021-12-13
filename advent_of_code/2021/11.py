@@ -125,6 +125,7 @@ def update(pt: Pt, values: Values, to_zero: bool = False) -> bool:
 
     return values[row_idx][col_idx] > 9
 
+
 def update_and_flash(values: Values, neighbors_func: NeighborsFunc) -> int:
     """Update values and flash. Return number of flashes this turn."""
 
@@ -167,10 +168,10 @@ def setup(lines: Iterable[str]) -> tuple[Values, NeighborsFunc, int]:
     num_cols = len(values[0])
     neighbors_func = partial(
         neighbor_indices,
-        max_row_idx = num_rows - 1,
-        max_col_idx = num_cols - 1,
+        max_row_idx=num_rows - 1,
+        max_col_idx=num_cols - 1,
     )
-    return values, neighbors_func, num_rows*num_cols
+    return values, neighbors_func, num_rows * num_cols
 
 
 def part_one(lines: Iterable[str]) -> int:

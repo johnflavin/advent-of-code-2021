@@ -14,10 +14,13 @@ up 3
 down 8
 forward 2
 
-After following these instructions, you would have a horizontal position of 15 and a depth of 10. (Multiplying these together produces 150.)
+After following these instructions, you would have a horizontal position of 15 and a
+depth of 10. (Multiplying these together produces 150.)
 
 PART 2
-In addition to horizontal position and depth, you'll also need to track a third value, aim, which also starts at 0. The commands also mean something entirely different than you first thought:
+In addition to horizontal position and depth, you'll also need to track a third value,
+aim, which also starts at 0. The commands also mean something entirely different than
+you first thought:
 
 down X increases your aim by X units.
 up X decreases your aim by X units.
@@ -76,9 +79,9 @@ def position_from_lines(lines: Iterable[str], part2: bool = False) -> tuple[int,
 
 def part_one(lines: Iterable[str]) -> int:
     horiz, depth = position_from_lines(lines, part2=False)
-    return horiz*depth
+    return horiz * depth
 
 
 def part_two(lines: Iterable[str]) -> int:
     horiz, depth = position_from_lines(lines, part2=True)
-    return horiz*depth
+    return horiz * depth

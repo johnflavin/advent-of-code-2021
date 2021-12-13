@@ -32,7 +32,7 @@ PART_TWO_RESULT = 123054
 
 
 Node = str
-Graph = dict[Node: set[Node]]
+Graph = dict[Node : set[Node]]
 Path = list[Node]
 
 START = "start"
@@ -52,7 +52,12 @@ def build_graph(lines: Iterable[str]) -> Graph:
     return graph
 
 
-def find_paths_from(node: Node, graph: Graph, current_path: Path | None = None, can_visit_one_lower: bool = False) -> Iterable[Path]:
+def find_paths_from(
+    node: Node,
+    graph: Graph,
+    current_path: Path | None = None,
+    can_visit_one_lower: bool = False,
+) -> Iterable[Path]:
     current_path = current_path or []
 
     if node.lower() == node and node in current_path:
@@ -76,7 +81,8 @@ def find_paths_from(node: Node, graph: Graph, current_path: Path | None = None, 
 
     # Join together all the valid paths after this one
     return itertools.chain.from_iterable(
-        find_paths_from(next, graph, current_path, can_visit_one_lower) for next in graph[node]
+        find_paths_from(next, graph, current_path, can_visit_one_lower)
+        for next in graph[node]
     )
 
 
@@ -90,6 +96,7 @@ def solution(lines: Iterable[str], can_visit_one_lower: bool = False) -> int:
 
 def part_one(lines: Iterable[str]) -> int:
     return solution(lines)
+
 
 def part_two(lines: Iterable[str]) -> int:
     return solution(lines, can_visit_one_lower=True)

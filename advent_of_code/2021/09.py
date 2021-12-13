@@ -97,12 +97,16 @@ def process_lines(lines: Iterable[str]) -> tuple[Heights, NeighborsFunc]:
 
     num_rows = len(heights)
     num_cols = len(heights[0])
-    neighbors_func = partial(neighbor_indices, max_row_idx = num_rows - 1, max_col_idx = num_cols - 1)
+    neighbors_func = partial(
+        neighbor_indices, max_row_idx=num_rows - 1, max_col_idx=num_cols - 1
+    )
 
     return heights, neighbors_func
 
 
-def low_points(heights: Heights, neighbors_func: NeighborsFunc) -> Iterable[tuple[Pt], int]:
+def low_points(
+    heights: Heights, neighbors_func: NeighborsFunc
+) -> Iterable[tuple[Pt], int]:
 
     for row_idx, row in enumerate(heights):
         for col_idx, value in enumerate(row):
@@ -111,11 +115,6 @@ def low_points(heights: Heights, neighbors_func: NeighborsFunc) -> Iterable[tupl
                 heights[neighbor_row_idx][neighbor_col_idx]
                 for neighbor_row_idx, neighbor_col_idx in neighbors
             )
-
-            # print(
-            #     f"{row_idx},{col_idx} {value} — ",
-            #     "; ".join(f"{nri},{nci} {nv}" for (nri, nci), nv in zip(neighbors, neighbor_vals))
-            # )
 
             for neighbor_val in neighbor_vals:
                 if value >= neighbor_val:
@@ -148,7 +147,9 @@ def build_basin(low_pt: Pt, heights: Heights, neighbors_func: NeighborsFunc) -> 
         else:
             # I am part of the basin. Check my neighbors.
             basin.add(pt)
-            unchecked.update(neighbor for neighbor in neighbors_func(pt) if neighbor not in basin)
+            unchecked.update(
+                neighbor for neighbor in neighbors_func(pt) if neighbor not in basin
+            )
 
         # print(f"{basin=}\n{unchecked=}")
     # print("DONE WITH BASIN")

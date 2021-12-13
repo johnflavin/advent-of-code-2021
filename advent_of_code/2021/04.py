@@ -13,7 +13,6 @@ Figure out which board will win last.
 """
 
 from collections.abc import Iterable
-from itertools import islice
 from typing import Optional, TypeVar
 
 
@@ -55,8 +54,8 @@ class Board:
     def __init__(self, lines: Iterable[list[int]]):
         self.unmarked_values_to_pos = {}
         self.marked_values_to_pos = {}
-        self.row_counts = [0]*5
-        self.col_counts = [0]*5
+        self.row_counts = [0] * 5
+        self.col_counts = [0] * 5
 
         for row, line in enumerate(lines):
             # print(row, line)
@@ -84,22 +83,21 @@ class Board:
         return None
 
     def __str__(self):
-        empty_line = [" -  "]*6
+        empty_line = [" -  "] * 6
         first_line = [" "] + [f"{cc: ^4}" for cc in self.col_counts]
         lines = [first_line] + [list(empty_line) for _ in range(5)]
         for row, row_count in enumerate(self.row_counts, 1):
             lines[row][0] = f"{row_count: <0}"
         for v, (r, c) in self.unmarked_values_to_pos.items():
-            lines[r+1][c+1] = f"{v: ^4}"
+            lines[r + 1][c + 1] = f"{v: ^4}"
         for v, (r, c) in self.marked_values_to_pos.items():
-            lines[r+1][c+1] = f"{v:*^4}"
-        return "\n".join(" ".join(l) for l in lines)
+            lines[r + 1][c + 1] = f"{v:*^4}"
+        return "\n".join(" ".join(line) for line in lines)
 
 
 def parse_lines(lines: Iterable[str]) -> tuple[list[int], list[Board]]:
-
     def chunk(iterable: Iterable[T], n: int) -> Iterable[tuple[T]]:
-        args = [iter(iterable)]*n
+        args = [iter(iterable)] * n
         return zip(*args)
 
     def parse_board(lines_: Iterable[str]) -> Board:
@@ -116,6 +114,7 @@ def parse_lines(lines: Iterable[str]) -> tuple[list[int], list[Board]]:
 
     return draws, boards
 
+
 def part_two(lines: Iterable[str]) -> int:
 
     draws, boards = parse_lines(lines)
@@ -131,7 +130,7 @@ def part_two(lines: Iterable[str]) -> int:
             break
 
     # print(f"Board {idx}, {result}*{value} = {result*value}")
-    return result*value
+    return result * value
 
 
 def part_one(lines: Iterable[str]) -> int:
@@ -142,6 +141,6 @@ def part_one(lines: Iterable[str]) -> int:
             result = board.mark(value)
             if result is not None:
                 # print(f"Board {idx}, {result}*{value} = {result*value}")
-                return result*value
+                return result * value
 
     raise RuntimeError("Nobody won")

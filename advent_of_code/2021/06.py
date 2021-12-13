@@ -35,7 +35,7 @@ def solution(lines: Iterable[str], num_days: int) -> int:
     # Store number at given tick
     # This will never grow, so our memory stays bounded
     # Only the values stored in here will grow
-    state = [0]*9
+    state = [0] * 9
     for tick, count in tick_counts.items():
         state[tick] = count
 

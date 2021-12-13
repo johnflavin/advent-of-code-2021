@@ -12,7 +12,6 @@ import itertools
 from collections import Counter
 from collections.abc import Iterable
 from math import copysign
-from typing import Optional, TypeVar
 
 
 EXAMPLE = """\
@@ -35,6 +34,7 @@ PART_TWO_RESULT = 18442
 LineBounds = tuple[int]
 Point = tuple[int]
 
+
 def parse_line(line: str) -> LineBounds:
     """
     Given a string
@@ -53,11 +53,7 @@ def parse_line(line: str) -> LineBounds:
 
 
 def line_bounds_to_points(
-    start_x: int,
-    end_x: int,
-    start_y: int,
-    end_y: int,
-    skip_slopes: bool = True
+    start_x: int, end_x: int, start_y: int, end_y: int, skip_slopes: bool = True
 ) -> Iterable[Point]:
     """
     Given the start and end x and y values of a line,
@@ -128,7 +124,8 @@ def solution(lines: Iterable[str], skip_slopes: bool) -> int:
     c = Counter(
         itertools.chain.from_iterable(
             line_bounds_to_points(*parse_line(line), skip_slopes=skip_slopes)
-            for line in lines if line
+            for line in lines
+            if line
         )
     )
     # print(c)

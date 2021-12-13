@@ -37,7 +37,8 @@ def count_increases(lines: list[int]) -> int:
 
 def sliding_window(iterable, n=2):
     """Create a new iterable sliding window over a given iterable
-    Taken from https://napsterinblue.github.io/notes/python/internals/itertools_sliding_window/
+    Taken from
+    https://napsterinblue.github.io/notes/python/internals/itertools_sliding_window/
     """
     iterables = itertools.tee(iterable, n)
 

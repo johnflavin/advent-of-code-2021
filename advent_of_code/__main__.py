@@ -9,6 +9,7 @@ from typing import Iterable
 
 import pyperclip
 
+
 class Part(Enum):
     ONE = 1
     TWO = 2
@@ -45,22 +46,20 @@ def download_puzzle_data(year: str | int, day: str | int) -> bytes:
 def read_session_cookie(year: str | int) -> str:
     resource_package = f"{__package__}.{year}.resources"
     resource_name = "session.txt"
-    session_cookie_file = importlib.resources.files(resource_package).joinpath(resource_name)
+    session_cookie_file = importlib.resources.files(resource_package).joinpath(
+        resource_name
+    )
     with open(session_cookie_file, "r") as f:
         return f.read().strip()
 
 
-def find_input_file(
-    year: str | int, day: str | int
-) -> Iterable[str]:
+def find_input_file(year: str | int, day: str | int) -> Iterable[str]:
     resource_package = f"{__package__}.{year}.resources"
     resource_name = f"{day:02}.input.txt"
     return importlib.resources.files(resource_package).joinpath(resource_name)
 
 
-def input_file_lines(
-    year: str | int, day: str | int
-) -> Iterable[str]:
+def input_file_lines(year: str | int, day: str | int) -> Iterable[str]:
     input_file = find_input_file(year, day)
     if not input_file.exists():
         with open(input_file, "wb") as f:
@@ -69,6 +68,7 @@ def input_file_lines(
     def inner():
         with open(input_file, "r") as f:
             yield from f
+
     return map(lambda l: l.strip(), inner())
 
 
@@ -84,17 +84,27 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
     puzzle_func = puzzle_module.part_one if part == Part.ONE else puzzle_module.part_two
 
     example = iter(puzzle_module.EXAMPLE.split("\n"))
-    expected_example_result = puzzle_module.PART_ONE_EXAMPLE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_EXAMPLE_RESULT
+    expected_example_result = (
+        puzzle_module.PART_ONE_EXAMPLE_RESULT
+        if part == Part.ONE
+        else puzzle_module.PART_TWO_EXAMPLE_RESULT
+    )
 
     actual_example_result = puzzle_func(example)
-    example_output, example_is_correct = puzzle_result_output(expected_example_result, actual_example_result)
+    example_output, example_is_correct = puzzle_result_output(
+        expected_example_result, actual_example_result
+    )
     example_output = f"Example: {example_output}"
     if not example_is_correct:
         return example_output, 1
 
     puzzle = input_file_lines(year, day)
     actual_puzzle_result = puzzle_func(puzzle)
-    expected_puzzle_result = puzzle_module.PART_ONE_RESULT if part == Part.ONE else puzzle_module.PART_TWO_RESULT
+    expected_puzzle_result = (
+        puzzle_module.PART_ONE_RESULT
+        if part == Part.ONE
+        else puzzle_module.PART_TWO_RESULT
+    )
 
     if expected_puzzle_result is None:
         if actual_puzzle_result is not None:
@@ -105,7 +115,9 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
             puzzle_output = ""
         exit_code = 0
     else:
-        puzzle_output, puzzle_is_correct = puzzle_result_output(expected_puzzle_result, actual_puzzle_result)
+        puzzle_output, puzzle_is_correct = puzzle_result_output(
+            expected_puzzle_result, actual_puzzle_result
+        )
         puzzle_output = f"Puzzle: {puzzle_output}"
         exit_code = not puzzle_is_correct
 
@@ -115,10 +127,18 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
 def main(argv):
     parser = argparse.ArgumentParser(description="Run Advent of Code puzzle")
     parser.add_argument(
-        "--part", type=int, default=1, required=False, help="Which part of the puzzle to run"
+        "--part",
+        type=int,
+        default=1,
+        required=False,
+        help="Which part of the puzzle to run",
     )
     parser.add_argument(
-        "--date", type=str, default=None, required=False, help="Datestamp of puzzle to run (default today)"
+        "--date",
+        type=str,
+        default=None,
+        required=False,
+        help="Datestamp of puzzle to run (default today)",
     )
     args = parser.parse_args(argv)
 

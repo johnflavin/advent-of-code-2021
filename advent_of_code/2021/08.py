@@ -34,7 +34,8 @@ def part_one(lines: Iterable[str]) -> int:
             continue
         calibrations, outputs = line.split(" | ")
         num_uniques += sum(
-            1 for output in outputs.split()
+            1
+            for output in outputs.split()
             if (l := len(output)) == 2 or l == 3 or l == 4 or l == 7
         )
     return num_uniques
@@ -43,7 +44,7 @@ def part_one(lines: Iterable[str]) -> int:
 def decode_line(line: str) -> int:
     calibrations, outputs = line.split(" | ")
     calibrations = [set(cal) for cal in calibrations.split()]
-    mapping = [""]*10
+    mapping = [""] * 10
 
     # First find uniques
     for cal in calibrations:
@@ -100,7 +101,7 @@ def decode_line(line: str) -> int:
 
     # Use the mapping to turn outputs into integers
     return sum(
-        10**i * mapping.index(set(output))
+        10 ** i * mapping.index(set(output))
         for i, output in enumerate(reversed(outputs.split()))
     )
 
