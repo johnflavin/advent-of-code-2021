@@ -1,0 +1,10 @@
+files: 'advent_of_code\/'
+repos:
+-   repo: https://github.com/python/black
+    rev: 21.12b0
+    hooks:
+    -   id: black
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+    -   id: flake8
