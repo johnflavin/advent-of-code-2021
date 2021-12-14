@@ -46,7 +46,7 @@ def download_puzzle_data(year: str | int, day: str | int) -> bytes:
 
 
 def read_session_cookie(year: str | int) -> str:
-    resource_package = f"{__package__}.{year}.resources"
+    resource_package = f"{__package__}.year_{year}.resources"
     resource_name = "session.txt"
     session_cookie_file = importlib.resources.files(resource_package).joinpath(
         resource_name
