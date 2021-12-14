@@ -13,9 +13,6 @@ Figure out which board will win last.
 """
 
 from collections.abc import Iterable
-from functools import partial
-from itertools import islice
-from typing import Optional, TypeVar
 
 
 EXAMPLE = """\
@@ -44,8 +41,6 @@ PART_TWO_EXAMPLE_RESULT = 1924
 PART_ONE_RESULT = 39902
 PART_TWO_RESULT = 26936
 
-T = TypeVar("T")
-
 
 class Board:
     unmarked_values_to_pos: dict[int, tuple[int, int]]
@@ -66,12 +61,12 @@ class Board:
 
         # print(self)
 
-    def mark(self, value: int) -> Optional[int]:
+    def mark(self, value: int) -> int:
         # print(self.unmarked_values_to_pos)
         # print(value)
         row, col = self.unmarked_values_to_pos.pop(value, (None, None))
         if row is None or col is None:
-            return None
+            return -1
 
         self.marked_values_to_pos[value] = row, col
         self.row_counts[row] += 1
@@ -82,7 +77,7 @@ class Board:
             # print(self)
             return sum(self.unmarked_values_to_pos.keys())
 
-        return None
+        return -1
 
     def __str__(self):
         empty_line = [" -  "] * 6
@@ -98,25 +93,25 @@ class Board:
 
 
 def parse_lines(lines: Iterable[str]) -> tuple[list[int], list[Board]]:
-    lines = list(lines)
-
-    def take(iterable: Iterable[T], n: int) -> list[T]:
-        return list(islice(iterable, n))
-
-    def chunk(iterable: Iterable[T], n: int) -> Iterable[list[T]]:
-        return iter(partial(take, iter(iterable), n), [])
-
     def parse_board(lines_: Iterable[str]) -> Board:
         return Board(parse_board_line(line) for line in lines_)
 
     def parse_board_line(line: str) -> list[int]:
         return [int(value) for value in line.strip().split()]
 
-    # row of draws
-    draws = [int(draw) for draw in lines[0].strip().split(",")]
+    lines = list(lines)
+
+    # First row of lines = draws
+    draws = [int(draw) for draw in lines.pop(0).strip().split(",")]
+
+    # Next row is blank
+    lines.pop(0)
 
     # rest of lines are boards
-    boards = [parse_board(list(line_chunk[1:])) for line_chunk in chunk(lines[1:], 6)]
+    boards = []
+    while len(lines) >= 5:
+        boards.append(parse_board(lines[:6]))
+        lines = lines[6:]
 
     return draws, boards
 
@@ -126,16 +121,17 @@ def part_two(lines: Iterable[str]) -> int:
     draws, boards = parse_lines(lines)
     id_board = dict(enumerate(boards, 1))
 
+    result = -1
+    value = 0
     for value in draws:
         for idx, board in list(id_board.items()):
             result = board.mark(value)
-            if result is not None:
+            if result > -1:
                 # print(f"Board {idx}, {result}*{value} = {result*value}")
                 del id_board[idx]
         if len(id_board) == 0:
             break
 
-    assert result is not None
     # print(f"Board {idx}, {result}*{value} = {result*value}")
     return result * value
 
@@ -143,10 +139,12 @@ def part_two(lines: Iterable[str]) -> int:
 def part_one(lines: Iterable[str]) -> int:
     draws, boards = parse_lines(lines)
 
+    result = -1
+    value = 0
     for value in draws:
         for idx, board in enumerate(boards, 1):
             result = board.mark(value)
-            if result is not None:
+            if result > -1:
                 # print(f"Board {idx}, {result}*{value} = {result*value}")
                 return result * value
 
