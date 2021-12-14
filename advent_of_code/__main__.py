@@ -131,12 +131,19 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Run Advent of Code puzzle")
-    parser.add_argument(
+    g = parser.add_argument_group()
+    g.add_argument(
         "--part",
         type=int,
         default=1,
         required=False,
         help="Which part of the puzzle to run",
+    )
+    g.add_argument(
+        "--both",
+        action="store_true",
+        required=False,
+        help="Run both parts",
     )
     parser.add_argument(
         "--date",
@@ -160,10 +167,18 @@ def main(argv):
     else:
         year, _, day = datestamp.split("-")
 
-    part = Part(args.part)
+    if args.both:
+        exit_code = 0
+        for part in Part:
+            output_str, exit_code_ = run_puzzle_func(year, day, part)
+            print(output_str)
+            exit_code = exit_code or exit_code_
 
-    output_str, exit_code = run_puzzle_func(year, day, part)
-    print(output_str)
+    else:
+        part = Part(args.part)
+
+        output_str, exit_code = run_puzzle_func(year, day, part)
+        print(output_str)
 
     return exit_code
 
