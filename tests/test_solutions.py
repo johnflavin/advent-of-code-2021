@@ -47,9 +47,10 @@ def test_puzzle_solution(
 ):
     puzzle_func = puzzle_module.part_one if part == Part.ONE else puzzle_module.part_two
 
-    if not puzzle_module.EXAMPLE.strip():
+    raw_example = puzzle_module.EXAMPLE.strip()
+    if not raw_example:
         pytest.skip("No example")
-    example = iter(puzzle_module.EXAMPLE.split("\n"))
+    example = iter(raw_example.split("\n"))
 
     expected_example_result = (
         puzzle_module.PART_ONE_EXAMPLE_RESULT
