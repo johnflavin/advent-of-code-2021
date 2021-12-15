@@ -9,6 +9,7 @@ license = "MIT"
 python = "^3.10"
 requests = "^2.26.0"
 pyperclip = "^1.8.2"
+networkx = "^2.6.3"
 
 [tool.poetry.dev-dependencies]
 black = "^21.12b0"
