@@ -19,9 +19,10 @@ in how many universes does that player win?
 """
 
 import logging
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
-from itertools import islice
+from itertools import islice, product
 
 
 EXAMPLE = """\
@@ -31,7 +32,7 @@ Player 2 starting position: 8
 PART_ONE_EXAMPLE_RESULT = 739785
 PART_TWO_EXAMPLE_RESULT = 444356092776315
 PART_ONE_RESULT = 432450
-PART_TWO_RESULT = None
+PART_TWO_RESULT = 138508043837521
 
 
 logger = logging.getLogger(__name__)
@@ -149,6 +150,53 @@ def play_deterministic(game: GameState) -> FinishedGame:
     return FinishedGame(winning_score, losing_score, die_rolls)
 
 
+def define_quantum_game_turns(
+    num_spaces: int = 10,
+    die_sides: int = 3,
+    num_rolls_per_turn: int = 3,
+) -> dict[int, dict[int, int]]:
+    single_die_rolls = tuple(range(1, die_sides + 1))
+    turn_rolls = product(*[single_die_rolls] * num_rolls_per_turn)
+    turn_moves: Counter[int] = Counter(map(sum, turn_rolls))
+
+    positions = range(1, num_spaces + 1)
+    return {
+        start_position: Counter(
+            {
+                ((start_position + move) % num_spaces or num_spaces): multiplicity
+                for move, multiplicity in turn_moves.items()
+            }
+        )
+        for start_position in positions
+    }
+
+
+QUANTUM_TURNS = define_quantum_game_turns()
+
+
+def play_quantum_game(start: GameState) -> dict[int, int]:
+    num_games_won_by_player = {p.player_idx: 0 for p in start.players}
+    in_progress_games = Counter({start: 1})
+
+    while in_progress_games:
+        still_in_progress: Counter[GameState] = Counter()
+        for game, game_multiplicity in in_progress_games.items():
+            new_positions = QUANTUM_TURNS[game.next_turn_player.position]
+
+            for new_pos, turn_multiplicity in new_positions.items():
+                new_game_state = game.move(new_pos)
+                new_game_multiplicity = turn_multiplicity * game_multiplicity
+
+                if (winner := new_game_state.winner) is not None:
+                    # game is finished
+                    num_games_won_by_player[winner.player_idx] += new_game_multiplicity
+                else:
+                    still_in_progress.update({new_game_state: new_game_multiplicity})
+        in_progress_games = still_in_progress
+
+    return num_games_won_by_player
+
+
 def part_one(lines: Iterable[str]) -> int:
 
     players = parse_lines(lines)
@@ -158,4 +206,7 @@ def part_one(lines: Iterable[str]) -> int:
 
 
 def part_two(lines: Iterable[str]) -> int:
-    return 0
+    players = parse_lines(lines)
+    start = GameState(21, *players)
+    num_games_won_by_player = play_quantum_game(start)
+    return num_games_won_by_player[1]
