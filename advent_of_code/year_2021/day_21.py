@@ -37,10 +37,65 @@ PART_TWO_RESULT = None
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Player:
+@dataclass(frozen=True)
+class PlayerState:
+    player_idx: int
     position: int
     score: int
+
+    def move(self, new_pos: int) -> "PlayerState":
+        return PlayerState(
+            player_idx=self.player_idx, position=new_pos, score=self.score + new_pos
+        )
+
+
+@dataclass(frozen=True)
+class GameState:
+    score_goal: int
+    next_turn_player: PlayerState
+    other_player: PlayerState
+
+    @property
+    def players(self) -> list[PlayerState]:
+        return [self.next_turn_player, self.other_player]
+
+    @property
+    def is_finished(self) -> bool:
+        return self.winner is not None
+
+    @property
+    def winner(self) -> PlayerState | None:
+        for p in self.players:
+            if p.score >= self.score_goal:
+                return p
+        return None
+
+    @property
+    def winning_score(self) -> int | None:
+        winner = self.winner
+        return winner.score if winner else None
+
+    @property
+    def loser(self) -> PlayerState | None:
+        winner = self.winner
+        if winner is None:
+            return None
+        for p in self.players:
+            if p != winner:
+                return p
+        return None
+
+    @property
+    def losing_score(self) -> int | None:
+        loser = self.loser
+        return loser.score if loser else None
+
+    def move(self, new_pos) -> "GameState":
+        return GameState(
+            score_goal=self.score_goal,
+            next_turn_player=self.other_player,
+            other_player=self.next_turn_player.move(new_pos),
+        )
 
 
 @dataclass
@@ -57,42 +112,48 @@ def deterministic_die_gen():
         i += 1
 
 
-def parse_lines(lines: Iterable[str]) -> list[Player]:
-    return [Player(position=int(line.split(": ")[-1]), score=0) for line in lines]
+def parse_lines(lines: Iterable[str]) -> list[PlayerState]:
+    return [
+        PlayerState(
+            player_idx=int(line.split(" ")[1]),
+            position=int(line.split(": ")[-1]),
+            score=0,
+        )
+        for line in lines
+    ]
 
 
-def play(players: list[Player]) -> FinishedGame:
+def play_deterministic(game: GameState) -> FinishedGame:
     die = deterministic_die_gen()
-    p = 0
+    board_spaces = 10
+
     die_rolls = 0
-    while players[p].score < 1000 and players[not p].score < 1000:
+    while not game.is_finished:
         die_rolls += 3
         rolls = list(islice(die, 3))
         move = sum(rolls)
-
-        new_pos = (players[p].position + move) % 10
-        new_pos = new_pos or 10
-
-        players[p].position = new_pos
-        players[p].score += new_pos
+        new_pos = (game.next_turn_player.position + move) % board_spaces or board_spaces
+        game = game.move(new_pos)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
-                f"Player {p+1} "
+                f"Player {game.other_player.player_idx} "
                 f"rolls {rolls[0]}+{rolls[1]}+{rolls[2]} "
-                f"and moves {move} to space {new_pos} "
-                f"for a total score of {players[p].score}."
+                f"and moves {move} "
+                f"for a total score of {game.other_player.score}."
             )
 
-        p = int(not p)
-
-    return FinishedGame(players[not p].score, players[p].score, die_rolls)
+    winning_score = game.winning_score
+    losing_score = game.losing_score
+    assert winning_score is not None and losing_score is not None
+    return FinishedGame(winning_score, losing_score, die_rolls)
 
 
 def part_one(lines: Iterable[str]) -> int:
 
     players = parse_lines(lines)
-    finished_game = play(players)
+    start = GameState(1000, *players)
+    finished_game = play_deterministic(start)
     return finished_game.low_score * finished_game.num_die_rolls
 
 
