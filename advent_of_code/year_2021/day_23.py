@@ -70,9 +70,9 @@ EXAMPLE = """\
   #A#D#C#A#
   #########
 """
-PART_ONE_EXAMPLE_RESULT = None
+PART_ONE_EXAMPLE_RESULT = 12521
 PART_TWO_EXAMPLE_RESULT = None
-PART_ONE_RESULT = None
+PART_ONE_RESULT = 19046
 PART_TWO_RESULT = None
 
 
@@ -169,7 +169,7 @@ LOCATION_GRAPH = {
         Location.HALL_RIGHT_LEFT: 2,
     },
     Location.HALL_LEFT_LEFT: {
-        Location.HALL_RIGHT_LEFT: 1,
+        Location.HALL_LEFT_RIGHT: 1,
     },
     Location.HALL_LEFT_RIGHT: {
         Location.HALL_LEFT_LEFT: 1,
@@ -305,7 +305,7 @@ def move_cost(apod: Apod, start: Location, end: Location) -> int:
     return APOD_MOVE_COSTS[apod] * LOCATION_MOVE_COSTS[(start, end)]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class State:
     a0: Location
     a1: Location
@@ -315,6 +315,26 @@ class State:
     c1: Location
     d0: Location
     d1: Location
+
+    def __init__(
+        self,
+        a0: Location,
+        a1: Location,
+        b0: Location,
+        b1: Location,
+        c0: Location,
+        c1: Location,
+        d0: Location,
+        d1: Location,
+    ):
+        object.__setattr__(self, "a0", a0 if a0.value < a1.value else a1)
+        object.__setattr__(self, "a1", a0 if a0.value > a1.value else a1)
+        object.__setattr__(self, "b0", b0 if b0.value < b1.value else b1)
+        object.__setattr__(self, "b1", b0 if b0.value > b1.value else b1)
+        object.__setattr__(self, "c0", c0 if c0.value < c1.value else c1)
+        object.__setattr__(self, "c1", c0 if c0.value > c1.value else c1)
+        object.__setattr__(self, "d0", d0 if d0.value < d1.value else d1)
+        object.__setattr__(self, "d1", d0 if d0.value > d1.value else d1)
 
     def move(self, loc_name: str, new_loc: Location) -> "State":
         return State(**{**asdict(self), loc_name: new_loc})
@@ -417,16 +437,29 @@ def pretty_print(state: State) -> str:
 
 
 def parse_lines(lines: Iterable[str]) -> State:
-    # TODO
+    lines = list(lines)
+    up_locs = lines[2][3:-3].split("#")
+    down_locs = lines[3].strip()[1:-1].split("#")
+    locs: dict[str, list[Location]] = {"A": [], "B": [], "C": [], "D": []}
+    for letter, loc in zip(
+        up_locs + down_locs,
+        (
+            Location.A_UP,
+            Location.B_UP,
+            Location.C_UP,
+            Location.D_UP,
+            Location.A_DOWN,
+            Location.B_DOWN,
+            Location.C_DOWN,
+            Location.D_DOWN,
+        ),
+    ):
+        locs[letter].append(loc)
     return State(
-        Location.A_DOWN,
-        Location.D_DOWN,
-        Location.A_UP,
-        Location.C_UP,
-        Location.C_DOWN,
-        Location.B_UP,
-        Location.B_DOWN,
-        Location.D_UP,
+        *locs["A"],
+        *locs["B"],
+        *locs["C"],
+        *locs["D"],
     )
 
 
