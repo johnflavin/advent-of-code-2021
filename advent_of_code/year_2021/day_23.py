@@ -56,9 +56,10 @@ to the true cost, since they will definitely need to move at least that many spa
 
 """
 
-from abc import ABC, abstractmethod
+import itertools
+from abc import ABC
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import InitVar, asdict, dataclass, field
 from enum import Enum, IntEnum, auto
 from queue import PriorityQueue
@@ -298,68 +299,28 @@ class State(ABC):
     # C: tuple[Location, ...]
     # D: tuple[Location, ...]
 
-    def _set_loc(self, apod_name: str, locs: tuple[Location, ...]):
-        for i, loc in enumerate(sorted(locs)):
-            object.__setattr__(self, f"{apod_name}{i}", loc)
+    num_apods_per_type: int
+    current_state_dict: dict[Apod, tuple[Location, ...]]
+    occupied_locations: set[Location]
 
-    @property
-    @abstractmethod
-    def A(self) -> tuple[Location, ...]:
-        pass
-
-    @A.setter
-    def A(self, A_: tuple[Location, ...]):
-        self._set_loc("A", A_)
-
-    @property
-    @abstractmethod
-    def B(self) -> tuple[Location, ...]:
-        pass
-
-    @B.setter
-    def B(self, B_: tuple[Location, ...]):
-        self._set_loc("B", B_)
-
-    @property
-    @abstractmethod
-    def C(self) -> tuple[Location, ...]:
-        pass
-
-    @C.setter
-    def C(self, C_: tuple[Location, ...]):
-        self._set_loc("C", C_)
-
-    @property
-    @abstractmethod
-    def D(self) -> tuple[Location, ...]:
-        pass
-
-    @D.setter
-    def D(self, D_: tuple[Location, ...]):
-        self._set_loc("D", D_)
-
-    def __init__(self, locations: dict[Apod, Iterable[Location]]):
-        for apod in Apod:
-            object.__setattr__(self, apod.name, locations[apod])
-
-    # def move(self, loc_name: str, new_loc: Location) -> "State":
-    #     return State(**{**asdict(self), loc_name: new_loc})
-
-    @property
-    def occupied_locations(self) -> set[Location]:
-        return {*self.A, *self.B, *self.C, *self.D}
+    def __init__(self, locations: Mapping[Apod, Iterable[Location]]):
+        self.current_state_dict = {
+            apod: tuple(sorted(locations[apod])) for apod in Apod
+        }
+        self.occupied_locations = set(
+            itertools.chain(*self.current_state_dict.values())
+        )
 
     def apod_locs(self, apod: Apod) -> tuple[Location, ...]:
-        return getattr(self, apod.name)
+        return self.current_state_dict[apod]
 
     def neighbors(
         self: "StateT", loc_info: LocationInfo
     ) -> "Iterable[tuple[StateT, int]]":
-        current_state_dict = {apod: getattr(self, apod.name) for apod in Apod}
         # print(f"{current_state_dict=}")
 
         # Try to move each apod type
-        for apod, current_apod_locs in current_state_dict.items():
+        for apod, current_apod_locs in self.current_state_dict.items():
             # Try to move each individual apod within the type
             for current_loc_idx, current_loc in enumerate(current_apod_locs):
                 # Find possible next steps
@@ -378,7 +339,7 @@ class State(ABC):
                             )
                         )
                         next_state_dict: dict[Apod, Iterable[Location]] = {
-                            **current_state_dict,
+                            **self.current_state_dict,
                             apod: next_locs,
                         }
                         # print(f"{next_state_dict}")
@@ -389,33 +350,35 @@ StateT = TypeVar("StateT", bound=State)
 
 
 class Part1State(State):
-    A0: Part1Location
-    A1: Part1Location
-    B0: Part1Location
-    B1: Part1Location
-    C0: Part1Location
-    C1: Part1Location
-    D0: Part1Location
-    D1: Part1Location
+    num_apods_per_type = 2
+    # A0: Part1Location
+    # A1: Part1Location
+    # B0: Part1Location
+    # B1: Part1Location
+    # C0: Part1Location
+    # C1: Part1Location
+    # D0: Part1Location
+    # D1: Part1Location
 
 
 class Part2State(State):
-    A0: Part2Location
-    A1: Part2Location
-    A2: Part2Location
-    A3: Part2Location
-    B0: Part2Location
-    B1: Part2Location
-    B2: Part2Location
-    B3: Part2Location
-    C0: Part2Location
-    C1: Part2Location
-    C2: Part2Location
-    C3: Part2Location
-    D0: Part2Location
-    D1: Part2Location
-    D2: Part2Location
-    D3: Part2Location
+    num_apods_per_type = 4
+    # A0: Part2Location
+    # A1: Part2Location
+    # A2: Part2Location
+    # A3: Part2Location
+    # B0: Part2Location
+    # B1: Part2Location
+    # B2: Part2Location
+    # B3: Part2Location
+    # C0: Part2Location
+    # C1: Part2Location
+    # C2: Part2Location
+    # C3: Part2Location
+    # D0: Part2Location
+    # D1: Part2Location
+    # D2: Part2Location
+    # D3: Part2Location
 
 
 @dataclass(frozen=True, order=True)
@@ -556,7 +519,7 @@ def parse_lines(lines: Iterable[str], part: int) -> tuple[State, State, Location
         starting_apods.append(line.strip()[1:-1].split("#"))
 
     # Map starting apods to their location enum values
-    apod_to_locs: dict[Apod, list[Location]] = defaultdict(list)
+    apod_to_locs: Mapping[Apod, list[Location]] = defaultdict(list)
     for loc_line, starting_apod_line in zip(starting_locs, starting_apods):
         for loc, starting_apod in zip(loc_line, starting_apod_line):
             apod_to_locs[Apod[starting_apod]].append(loc)
