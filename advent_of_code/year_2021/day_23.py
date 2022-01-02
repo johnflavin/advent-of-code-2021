@@ -56,13 +56,13 @@ to the true cost, since they will definitely need to move at least that many spa
 
 """
 
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import InitVar, asdict, dataclass, field
 from enum import Enum, IntEnum, auto
-from functools import cache
 from queue import PriorityQueue
-from typing import Generic, Type, TypeVar, cast
+from typing import Generic, Type, TypeVar
 
 
 EXAMPLE = """\
@@ -96,24 +96,84 @@ class Location(IntEnum):
     pass
 
 
-COMMON_LOCATION_STRS = [
-    "HALL_00",
-    "HALL_01",
-    "HALL_AB",
-    "HALL_BC",
-    "HALL_CD",
-    "HALL_10",
-    "HALL_11",
-    "A0",
-    "B0",
-    "C0",
-    "D0",
-]
+class Part1Location(Location):
+    HALL_00 = auto()
+    HALL_01 = auto()
+    HALL_AB = auto()
+    HALL_BC = auto()
+    HALL_CD = auto()
+    HALL_10 = auto()
+    HALL_11 = auto()
+    A0 = auto()
+    B0 = auto()
+    C0 = auto()
+    D0 = auto()
+    A1 = auto()
+    B1 = auto()
+    C1 = auto()
+    D1 = auto()
+
+
+class Part2Location(Location):
+    HALL_00 = auto()
+    HALL_01 = auto()
+    HALL_AB = auto()
+    HALL_BC = auto()
+    HALL_CD = auto()
+    HALL_10 = auto()
+    HALL_11 = auto()
+    A0 = auto()
+    B0 = auto()
+    C0 = auto()
+    D0 = auto()
+    A1 = auto()
+    B1 = auto()
+    C1 = auto()
+    D1 = auto()
+    A2 = auto()
+    B2 = auto()
+    C2 = auto()
+    D2 = auto()
+    A3 = auto()
+    B3 = auto()
+    C3 = auto()
+    D3 = auto()
 
 
 LocationT = TypeVar("LocationT", bound=Location)
-
 BASE_LOCATION_GRAPH = {
+    "A1": {
+        "A0": 1,
+    },
+    "A0": {
+        "A1": 1,
+        "HALL_01": 2,
+        "HALL_AB": 2,
+    },
+    "B1": {
+        "B0": 1,
+    },
+    "B0": {
+        "B1": 1,
+        "HALL_AB": 2,
+        "HALL_BC": 2,
+    },
+    "C1": {
+        "C0": 1,
+    },
+    "C0": {
+        "C1": 1,
+        "HALL_BC": 2,
+        "HALL_CD": 2,
+    },
+    "D1": {
+        "D0": 1,
+    },
+    "D0": {
+        "D1": 1,
+        "HALL_CD": 2,
+        "HALL_10": 2,
+    },
     "HALL_00": {
         "HALL_01": 1,
     },
@@ -121,24 +181,6 @@ BASE_LOCATION_GRAPH = {
         "HALL_00": 1,
         "A0": 2,
         "HALL_AB": 2,
-    },
-    "HALL_AB": {
-        "HALL_01": 2,
-        "A0": 2,
-        "B0": 2,
-        "HALL_BC": 2,
-    },
-    "HALL_BC": {
-        "HALL_AB": 2,
-        "B0": 2,
-        "C0": 2,
-        "HALL_CD": 2,
-    },
-    "HALL_CD": {
-        "HALL_10": 2,
-        "C0": 2,
-        "D0": 2,
-        "HALL_BC": 2,
     },
     "HALL_10": {
         "HALL_11": 1,
@@ -148,37 +190,23 @@ BASE_LOCATION_GRAPH = {
     "HALL_11": {
         "HALL_10": 1,
     },
-    "A0": {
+    "HALL_AB": {
         "HALL_01": 2,
-        "A1": 1,
-        "HALL_AB": 2,
-    },
-    "B0": {
-        "HALL_AB": 2,
-        "B1": 1,
+        "A0": 2,
+        "B0": 2,
         "HALL_BC": 2,
     },
-    "C0": {
-        "HALL_BC": 2,
-        "C1": 1,
+    "HALL_BC": {
+        "HALL_AB": 2,
         "HALL_CD": 2,
+        "B0": 2,
+        "C0": 2,
     },
-    "D0": {
-        "HALL_CD": 2,
-        "D1": 1,
+    "HALL_CD": {
+        "HALL_BC": 2,
         "HALL_10": 2,
-    },
-    "A1": {
-        "A0": 1,
-    },
-    "B1": {
-        "B0": 1,
-    },
-    "C1": {
-        "C0": 1,
-    },
-    "D1": {
-        "D0": 1,
+        "C0": 2,
+        "D0": 2,
     },
 }
 
@@ -263,14 +291,54 @@ class LocationInfo(Generic[LocationT]):
         return costs
 
 
-@dataclass(frozen=True, init=False)
-class State:
-    A: tuple[Location, ...]
-    B: tuple[Location, ...]
-    C: tuple[Location, ...]
-    D: tuple[Location, ...]
+# @dataclass(frozen=True, init=False)
+class State(ABC):
+    # A: tuple[Location, ...]
+    # B: tuple[Location, ...]
+    # C: tuple[Location, ...]
+    # D: tuple[Location, ...]
 
-    def __init__(self, locations: dict[Apod, tuple[Location, ...]]):
+    def _set_loc(self, apod_name: str, locs: tuple[Location, ...]):
+        for i, loc in enumerate(sorted(locs)):
+            object.__setattr__(self, f"{apod_name}{i}", loc)
+
+    @property
+    @abstractmethod
+    def A(self) -> tuple[Location, ...]:
+        pass
+
+    @A.setter
+    def A(self, A_: tuple[Location, ...]):
+        self._set_loc("A", A_)
+
+    @property
+    @abstractmethod
+    def B(self) -> tuple[Location, ...]:
+        pass
+
+    @B.setter
+    def B(self, B_: tuple[Location, ...]):
+        self._set_loc("B", B_)
+
+    @property
+    @abstractmethod
+    def C(self) -> tuple[Location, ...]:
+        pass
+
+    @C.setter
+    def C(self, C_: tuple[Location, ...]):
+        self._set_loc("C", C_)
+
+    @property
+    @abstractmethod
+    def D(self) -> tuple[Location, ...]:
+        pass
+
+    @D.setter
+    def D(self, D_: tuple[Location, ...]):
+        self._set_loc("D", D_)
+
+    def __init__(self, locations: dict[Apod, Iterable[Location]]):
         for apod in Apod:
             object.__setattr__(self, apod.name, locations[apod])
 
@@ -284,7 +352,9 @@ class State:
     def apod_locs(self, apod: Apod) -> tuple[Location, ...]:
         return getattr(self, apod.name)
 
-    def neighbors(self, loc_info: LocationInfo) -> Iterable[tuple["State", int]]:
+    def neighbors(
+        self: "StateT", loc_info: LocationInfo
+    ) -> "Iterable[tuple[StateT, int]]":
         current_state_dict = {apod: getattr(self, apod.name) for apod in Apod}
         # print(f"{current_state_dict=}")
 
@@ -307,9 +377,45 @@ class State:
                                 ]
                             )
                         )
-                        next_state_dict = {**current_state_dict, apod: next_locs}
+                        next_state_dict: dict[Apod, Iterable[Location]] = {
+                            **current_state_dict,
+                            apod: next_locs,
+                        }
                         # print(f"{next_state_dict}")
-                        yield State(next_state_dict), cost
+                        yield self.__class__(next_state_dict), cost
+
+
+StateT = TypeVar("StateT", bound=State)
+
+
+class Part1State(State):
+    A0: Part1Location
+    A1: Part1Location
+    B0: Part1Location
+    B1: Part1Location
+    C0: Part1Location
+    C1: Part1Location
+    D0: Part1Location
+    D1: Part1Location
+
+
+class Part2State(State):
+    A0: Part2Location
+    A1: Part2Location
+    A2: Part2Location
+    A3: Part2Location
+    B0: Part2Location
+    B1: Part2Location
+    B2: Part2Location
+    B3: Part2Location
+    C0: Part2Location
+    C1: Part2Location
+    C2: Part2Location
+    C3: Part2Location
+    D0: Part2Location
+    D1: Part2Location
+    D2: Part2Location
+    D3: Part2Location
 
 
 @dataclass(frozen=True, order=True)
@@ -317,14 +423,8 @@ class PrioritizableState:
     priority: float
     state: State = field(compare=False)
 
-    def neighbors(self, loc_info: LocationInfo) -> Iterable[tuple["State", int]]:
+    def neighbors(self, loc_info: LocationInfo) -> Iterable[tuple[State, int]]:
         return self.state.neighbors(loc_info)
-
-
-@cache
-def find_end_locs(apod: Apod, Loc: Type[Location], num_end_locs: int) -> list[Location]:
-    apod_name = apod.name
-    return [Loc[f"{apod_name}{i}"] for i in range(num_end_locs)]
 
 
 def heuristic(s: State, loc_info: LocationInfo) -> int:
@@ -423,7 +523,7 @@ def solve(start: State, end: State, loc_info: LocationInfo) -> tuple[int, list[S
 def pretty_print(state: State, Loc: Type[Location]) -> str:
     loc_strs = {loc: "." for loc in Loc}
     for loc_name, locs in asdict(state).items():
-        locs = cast(tuple[Location, ...], locs)
+        # locs = cast(tuple[Location, ...], locs)
         for loc in locs:
             loc_strs[loc] = loc_name
     template_top = """\
@@ -436,15 +536,12 @@ def pretty_print(state: State, Loc: Type[Location]) -> str:
     return template.format(*[loc_strs[loc] for loc in Loc])
 
 
-def parse_lines(lines: Iterable[str]) -> tuple[State, State, LocationInfo]:
+def parse_lines(lines: Iterable[str], part: int) -> tuple[State, State, LocationInfo]:
     lines = [line for line in lines if line]
-    tunnel_depth = len(lines) - 3
+    tunnel_depth = 2 if part == 1 else 4
 
     # Define the enum of the locations
-    location_strs = list(BASE_LOCATION_GRAPH.keys()) + [
-        f"{apod.name}{idx}" for idx in range(2, tunnel_depth) for apod in Apod
-    ]
-    Loc: Type[Location] = Enum("Loc", location_strs, type=Location)  # type:ignore
+    Loc: Type[Location] = Part1Location if part == 1 else Part2Location
 
     # This is a static structure defining the labels for the starting (and ending) locs
     starting_locs = [
@@ -459,20 +556,16 @@ def parse_lines(lines: Iterable[str]) -> tuple[State, State, LocationInfo]:
         starting_apods.append(line.strip()[1:-1].split("#"))
 
     # Map starting apods to their location enum values
-    apod_to_locs: dict[Apod, list[Loc]] = defaultdict(list)
+    apod_to_locs: dict[Apod, list[Location]] = defaultdict(list)
     for loc_line, starting_apod_line in zip(starting_locs, starting_apods):
         for loc, starting_apod in zip(loc_line, starting_apod_line):
             apod_to_locs[Apod[starting_apod]].append(loc)
     # Create the starting State
-    start = State(
-        {
-            apod: tuple(sorted(locs))  # type:ignore
-            for apod, locs in apod_to_locs.items()
-        }
-    )
+    state_cls = Part1State if part == 1 else Part2State
+    start = state_cls(apod_to_locs)
 
     # ending state: all apods are in their destination locations
-    end = State(
+    end = state_cls(
         {
             apod: tuple(
                 Loc[f"{apod.name}{idx}"] for idx in range(tunnel_depth)  # type:ignore
@@ -486,9 +579,12 @@ def parse_lines(lines: Iterable[str]) -> tuple[State, State, LocationInfo]:
 
     return start, end, loc_info
 
+    # loc_info holds the graph and movement costs
+    loc_info = LocationInfo(Loc, tunnel_depth)  # type:ignore
 
-def solution(lines: Iterable[str]) -> int:
-    start, end, loc_info = parse_lines(lines)
+
+def solution(lines: Iterable[str], part: int) -> int:
+    start, end, loc_info = parse_lines(lines, part)
     cost, path = solve(start, end, loc_info)
     for state in path:
         print(pretty_print(state, loc_info.Loc))
@@ -496,10 +592,10 @@ def solution(lines: Iterable[str]) -> int:
 
 
 def part_one(lines: Iterable[str]) -> int:
-    return solution(lines)
+    return solution(lines, 1)
 
 
 def part_two(lines: Iterable[str]) -> int:
     lines = [line for line in lines if line]
     lines = lines[:3] + ["  #D#C#B#A#", "  #D#B#A#C#"] + lines[3:]
-    return solution(lines)
+    return solution(lines, 2)
