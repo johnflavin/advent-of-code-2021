@@ -61,9 +61,9 @@ from abc import ABC
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import InitVar, asdict, dataclass, field
-from enum import Enum, IntEnum, auto
+from enum import Enum
+from functools import cache
 from queue import PriorityQueue
-from typing import Generic, Type, TypeVar
 
 
 EXAMPLE = """\
@@ -78,399 +78,874 @@ PART_ONE_RESULT = 19046
 PART_TWO_RESULT = None
 
 
-class Apod(Enum):
-    A = auto()
-    B = auto()
-    C = auto()
-    D = auto()
+# @dataclass(frozen=True)
+# class Position:
+#     x: int
+#     y: int
+
+#     def in_hallway(self):
+#         return self.y == 0
+
+#     def __lt__(self, other):
+#         return (self.x, self.y) < (other.x, other.y)
 
 
-APOD_MOVE_COSTS = {
-    Apod.A: 1,
-    Apod.B: 10,
-    Apod.C: 100,
-    Apod.D: 1000,
-}
+# def build_board(extended: bool = False) -> nx.Graph:
+#     g = nx.Graph()
+#     # hallway is 11 units long
+#     g.add_edges_from((Position(x, 0), Position(x + 1, 0)) for x in range(10))
+#     # add each room
+#     for room_x in range(2, 10, 2):
+#         g.add_edges_from(
+#             (
+#                 (Position(room_x, 0), Position(room_x, 1)),
+#                 (Position(room_x, 1), Position(room_x, 2)),
+#             )
+#         )
+#         if extended:
+#             g.add_edges_from(
+#                 (
+#                     (Position(room_x, 2), Position(room_x, 3)),
+#                     (Position(room_x, 3), Position(room_x, 4)),
+#                 )
+#             )
+#     return g
 
 
-class Location(IntEnum):
-    pass
+# BOARD = build_board()
 
 
-class Part1Location(Location):
-    HALL_00 = auto()
-    HALL_01 = auto()
-    HALL_AB = auto()
-    HALL_BC = auto()
-    HALL_CD = auto()
-    HALL_10 = auto()
-    HALL_11 = auto()
-    A0 = auto()
-    B0 = auto()
-    C0 = auto()
-    D0 = auto()
-    A1 = auto()
-    B1 = auto()
-    C1 = auto()
-    D1 = auto()
+# class AmphipodType(Enum):
+#     def __new__(cls, *args, **kwargs) -> AmphipodType:
+#         obj = object.__new__(cls)
+#         obj._value_ = args[0]
+#         return obj
+
+#     def __init__(self, _, movement_cost: int, destination_x: int):
+#         self.movement_cost = movement_cost
+#         self.destination_x = destination_x
+
+#     Amber = "A", 1, 2
+#     Bronze = "B", 10, 4
+#     Copper = "C", 100, 6
+#     Desert = "D", 1000, 8
 
 
-class Part2Location(Location):
-    HALL_00 = auto()
-    HALL_01 = auto()
-    HALL_AB = auto()
-    HALL_BC = auto()
-    HALL_CD = auto()
-    HALL_10 = auto()
-    HALL_11 = auto()
-    A0 = auto()
-    B0 = auto()
-    C0 = auto()
-    D0 = auto()
-    A1 = auto()
-    B1 = auto()
-    C1 = auto()
-    D1 = auto()
-    A2 = auto()
-    B2 = auto()
-    C2 = auto()
-    D2 = auto()
-    A3 = auto()
-    B3 = auto()
-    C3 = auto()
-    D3 = auto()
+# @dataclass(frozen=True)
+# class AmphipodState:
+#     type: AmphipodType
+#     position: Position
+#     at_rest: bool = False
+
+#     def at_destination(self):
+#         return (
+#             not self.position.in_hallway()
+#             and self.position.x == self.type.destination_x
+#         )
+
+#     def __lt__(self, other):
+#         return self.position < other.position
 
 
-LocationT = TypeVar("LocationT", bound=Location)
-BASE_LOCATION_GRAPH = {
-    "A1": {
-        "A0": 1,
-    },
-    "A0": {
-        "A1": 1,
-        "HALL_01": 2,
-        "HALL_AB": 2,
-    },
-    "B1": {
-        "B0": 1,
-    },
-    "B0": {
-        "B1": 1,
-        "HALL_AB": 2,
-        "HALL_BC": 2,
-    },
-    "C1": {
-        "C0": 1,
-    },
-    "C0": {
-        "C1": 1,
-        "HALL_BC": 2,
-        "HALL_CD": 2,
-    },
-    "D1": {
-        "D0": 1,
-    },
-    "D0": {
-        "D1": 1,
-        "HALL_CD": 2,
-        "HALL_10": 2,
-    },
-    "HALL_00": {
-        "HALL_01": 1,
-    },
-    "HALL_01": {
-        "HALL_00": 1,
-        "A0": 2,
-        "HALL_AB": 2,
-    },
-    "HALL_10": {
-        "HALL_11": 1,
-        "D0": 2,
-        "HALL_CD": 2,
-    },
-    "HALL_11": {
-        "HALL_10": 1,
-    },
-    "HALL_AB": {
-        "HALL_01": 2,
-        "A0": 2,
-        "B0": 2,
-        "HALL_BC": 2,
-    },
-    "HALL_BC": {
-        "HALL_AB": 2,
-        "HALL_CD": 2,
-        "B0": 2,
-        "C0": 2,
-    },
-    "HALL_CD": {
-        "HALL_BC": 2,
-        "HALL_10": 2,
-        "C0": 2,
-        "D0": 2,
-    },
-}
+# def find_minimal_cost_to_solution(
+#     initial_state: BoardState, board: nx.Graph = BOARD
+# ) -> int:
+#     """Dijkstra path-finding algorithm"""
+#     frontier: list[tuple[float, BoardState]] = []
+#     heapq.heappush(frontier, (0, initial_state))
+
+#     came_from = {}
+#     cost_so_far = {}
+#     came_from[initial_state] = None
+#     cost_so_far[initial_state] = 0
+
+#     while len(frontier) > 0:
+#         _, current = heapq.heappop(frontier)
+
+#         if current.is_goal_state():
+#             return cost_so_far[current]
+
+#         for next_state, next_cost in generate_next_states(current, board):
+#             new_cost = cost_so_far[current] + next_cost
+#             if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
+#                 cost_so_far[next_state] = new_cost
+#                 priority = new_cost + heuristic(next_state)
+#                 heapq.heappush(frontier, (priority, next_state))
+#                 came_from[next_state] = current
+
+
+# def generate_next_states(
+#     state: BoardState, board: nx.Graph
+# ) -> Iterator[tuple[BoardState, int]]:
+#     """Generate legal successor states and their costs"""
+#     room_depth = len(state.amphipods) // 4
+
+#     def generate_legal_moves(pod: AmphipodState) -> Iterator[tuple[AmphipodState, int]]:
+#         # If a pod is in its home room, and no pods of a different type are below it,
+#         # move to the lowest available position.
+#         if (
+#             pod.position.x == pod.type.destination_x
+#             and not pod.position.in_hallway()
+#             and all(
+#                 p.type is p
+#                 for p in state.amphipods
+#                 if p.position.x == pod.position.x and p.position.y > pod.position.y
+#             )
+#         ):
+#             dest_y = pod.position.y + 1
+#             while dest_y <= room_depth and not state.is_position_occupied(
+#                 replace(pod.position, y=dest_y)
+#             ):
+#                 dest_y += 1
+#             dest_y -= 1
+#             if dest_y > pod.position.y:
+#                 yield replace(
+#                     pod, position=replace(pod.position, y=dest_y), at_rest=True
+#                 ), dest_y - pod.position.y
+#             return
+
+#         # If a pod is stopped in the hallway, it can only move if it can reach its
+#         # destination, and then it must move toward its destination or into its room.
+#         if pod.position.in_hallway() and can_reach_destination(pod):
+#             dest_y = 1
+#             while dest_y <= room_depth and not state.is_position_occupied(
+#                 Position(pod.type.destination_x, dest_y)
+#             ):
+#                 dest_y += 1
+#             dest_y -= 1
+#             yield replace(
+#                 pod, position=Position(pod.type.destination_x, dest_y), at_rest=True
+#             ), abs(pod.position.x - pod.type.destination_x) + dest_y
+#             return
+#         if pod.position.in_hallway() and pod is not state.last_moved:
+#             return
+
+#         # If a pod is in a room and all positions above it are clear, move out of the room.
+#         if not pod.position.in_hallway() and all(
+#             not state.is_position_occupied(replace(pod.position, y=y))
+#             for y in range(0, pod.position.y)
+#         ):
+#             yield replace(pod, position=replace(pod.position, y=0)), pod.position.y
+#             return
+
+#         for next_pos in board.neighbors(pod.position):
+#             # All legal moves out of the hallway have been covered above.
+#             if pod.position.in_hallway() and not next_pos.in_hallway():
+#                 continue
+#             if state.is_position_occupied(next_pos):
+#                 continue
+#             yield replace(pod, position=next_pos), 1
+
+#     def can_reach_destination(pod: AmphipodState) -> bool:
+#         here = pod.position.x
+#         there = pod.type.destination_x
+#         clear_range = range(there, here, sign(here - there))
+
+#         if any(state.is_position_occupied(Position(x, 0)) for x in clear_range):
+#             return False
+#         if state.is_position_occupied(Position(there, 1)):
+#             return False
+#         if any(
+#             p.type is not pod.type and p.position.x == there for p in state.amphipods
+#         ):
+#             return False
+#         return True
+
+#     # If the last amphipod to move is just outside a room, it must continue moving
+#     if (
+#         state.last_moved is not None
+#         and state.last_moved.position.in_hallway()
+#         and state.last_moved.position.x in (2, 4, 6, 8)
+#     ):
+#         for next_position, move_count in generate_legal_moves(state.last_moved):
+#             yield (
+#                 move_pod(state, state.last_moved, next_position),
+#                 state.last_moved.type.movement_cost * move_count,
+#             )
+#         return
+
+#     # Otherwise, loop through legal successor states
+#     for pod in state.amphipods:
+#         if not pod.at_rest:
+#             for next_position, move_count in generate_legal_moves(pod):
+#                 yield move_pod(
+#                     state, pod, next_position
+#                 ), pod.type.movement_cost * move_count
+
+
+# def move_pod(
+#     state: BoardState, pod: AmphipodState, new_pod: AmphipodState
+# ) -> BoardState:
+#     amphipods = frozenset(new_pod if a is pod else a for a in state.amphipods)
+#     return BoardState(amphipods, new_pod)
+
+
+# def heuristic(state: BoardState) -> int:
+#     """Minimum cost for all pods to move directly 'home', without impediment"""
+#     result = 0
+#     room_depth = len(state.amphipods) // 4
+#     count_need_to_go_home_by_type = defaultdict(int)
+#     for pod in state.amphipods:
+#         if pod.position.in_hallway():
+#             result += pod.type.movement_cost * abs(
+#                 pod.position.x - pod.type.destination_x
+#             )
+#             count_need_to_go_home_by_type[pod.type] += 1
+#         # If pod is in the wrong room, it needs to move to the hallway, over, and back
+#         # down into its room.
+#         elif pod.position.x != pod.type.destination_x:
+#             result += pod.type.movement_cost * (
+#                 pod.position.y + abs(pod.position.x - pod.type.destination_x)
+#             )
+#             count_need_to_go_home_by_type[pod.type] += 1
+#         # If there are pods of a different type "below" this pod, it will have to move
+#         # to the hallway, out of the way, and back into the room.
+#         # But this is more expensive to compute than it's worth.
+#         # elif any(p.position.x == pod.position.x and p.position.y > pod.position.y for p in state.amphipods):
+#         #     result += pod.type.movement_cost * (pod.position.y + 2)
+#         #     count_need_to_go_home_by_type[pod.type] += 1
+#         # Otherwise, pod just needs to move to the bottom of its room
+#         else:
+#             result += pod.type.movement_cost * (room_depth - pod.position.y)
+
+#     for type, count in count_need_to_go_home_by_type.items():
+#         result += type.movement_cost * count * (count + 1) // 2
+
+#     return result
+
+
+@dataclass(frozen=True, order=True)
+class Apod:
+    name: str
+    move_cost: int
+    destination_x: int
+
+
+class OrderedEnum(Enum):
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value >= other.value
+        return NotImplemented
+
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value > other.value
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value <= other.value
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented
+
+
+class Apods(OrderedEnum):
+    A = Apod("A", 1, 2)
+    B = Apod("B", 10, 4)
+    C = Apod("C", 100, 6)
+    D = Apod("D", 1000, 8)
+
+
+@dataclass(frozen=True, order=True)
+class Location:
+    y: int
+    x: int
+
+    def __post_init__(self):
+        if self.y == 0:
+            assert self.x in {0, 1, 3, 5, 7, 9, 10}
+        else:
+            assert self.x in {2, 4, 6, 8}
+
+    @property
+    def in_hallway(self):
+        return self.y == 0
+
+    def distance(self, other: "Location") -> int:
+        if self.y == 0 or other.y == 0 or self.x == other.x:
+            # Move in x then down tunnel
+            return abs(self.x - other.x) + abs(self.y - other.y)
+        else:
+            # Have to move up to hallway then down again
+            return self.y + abs(self.x - other.x) + other.y
+
+
+@dataclass(frozen=True, order=True)
+class ApodState:
+    apod_enum: Apods
+    location: Location
+
+    @property
+    def apod(self) -> Apod:
+        return self.apod_enum.value
+
+    def move(self, new_location: Location) -> "ApodState":
+        return ApodState(apod_enum=self.apod_enum, location=new_location)
+
+    @property
+    def at_destination(self) -> bool:
+        return (
+            not self.location.in_hallway and self.location.x == self.apod.destination_x
+        )
+
+    @property
+    def destination_x(self) -> int:
+        return self.apod.destination_x
+
+    def move_cost(self) -> int:
+        return self.apod.move_cost
+
+    @property
+    def in_hallway(self) -> bool:
+        return self.location.in_hallway
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.apod.name}, {self.location})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    # def __lt__(self, other: "ApodState"):
+    #     return self.location < other.location
+
+
+@cache
+def build_location_graph(
+    tunnel_depth: int,
+) -> dict[Location, list[Location]]:
+    graph = {
+        # Hallway left left
+        Location(x=0, y=0): [
+            Location(x=1, y=0),
+        ],
+        # Hallway left right
+        Location(x=1, y=0): [
+            Location(x=0, y=0),
+            Location(x=2, y=1),
+            Location(x=3, y=0),
+        ],
+        # Hallway AB
+        Location(y=0, x=3): [
+            Location(y=0, x=1),
+            Location(y=1, x=2),
+            Location(y=1, x=4),
+            Location(y=0, x=5),
+        ],
+        # Hallway BC
+        Location(y=0, x=5): [
+            Location(y=0, x=3),
+            Location(y=1, x=4),
+            Location(y=1, x=6),
+            Location(y=0, x=7),
+        ],
+        # Hallway CD
+        Location(y=0, x=7): [
+            Location(y=0, x=5),
+            Location(y=1, x=6),
+            Location(y=1, x=8),
+            Location(y=0, x=9),
+        ],
+        # Hallway right left
+        Location(y=0, x=9): [
+            Location(y=0, x=7),
+            Location(y=1, x=8),
+            Location(y=0, x=10),
+        ],
+        # Hallway right right
+        Location(y=0, x=10): [
+            Location(y=0, x=9),
+        ],
+    }
+
+    # Add tunnels
+    for apod in Apods:
+        tunnel_x = apod.value.destination_x
+        # tunnel top
+        graph[Location(y=1, x=tunnel_x)] = [
+            Location(x=tunnel_x - 1, y=0),
+            Location(x=tunnel_x + 1, y=0),
+            Location(x=tunnel_x, y=2),
+        ]
+
+        # tunnel middle
+        for depth in range(2, tunnel_depth):
+            graph[Location(x=tunnel_x, y=depth)] = [
+                Location(x=tunnel_x, y=depth + 1),
+                Location(x=tunnel_x, y=depth - 1),
+            ]
+
+        # tunnel bottom
+        graph[Location(x=tunnel_x, y=tunnel_depth)] = [
+            Location(x=tunnel_x, y=tunnel_depth - 1)
+        ]
+    # print(graph)
+    return graph
+
+
+def calculate_distances(tunnel_depth: int) -> dict[tuple[Location, Location], int]:
+    graph = build_location_graph(tunnel_depth)
+    distances: dict[tuple[Location, Location], int] = {}
+    frontier: set[tuple[Location, Location, int]] = set()
+
+    # prime with zeroth and first order
+    for loc0, loc1s in graph.items():
+        distances[(loc0, loc0)] = 0
+
+        for loc1 in loc1s:
+            distance = loc0.distance(loc1)
+            distances[(loc0, loc1)] = distance
+            frontier.add((loc0, loc1, distance))
+
+    # Add all other orders by traversing graph
+    while frontier:
+        loc0, loc1, dist01 = frontier.pop()
+
+        for loc2 in graph[loc1]:
+            new_pair = (loc0, loc2)
+            new_distance = dist01 + loc1.distance(loc2)
+            if new_pair not in distances:
+                frontier.add((loc0, loc2, new_distance))
+                distances[new_pair] = new_distance
+            elif distances[new_pair] > new_distance:
+                frontier.discard((loc0, loc2, distances[new_pair]))
+                frontier.add((loc0, loc2, new_distance))
+                distances[new_pair] = new_distance
+
+    # for locs, dist in distances.items():
+    #     print(locs, dist)
+    return distances
+
+
+@cache
+def all_locations(tunnel_depth: int) -> list[Location]:
+    return sorted(build_location_graph(tunnel_depth).keys())
 
 
 @dataclass
-class LocationInfo(Generic[LocationT]):
-    Loc: Type[LocationT]
-    graph: dict[LocationT, dict[LocationT, int]] = field(init=False)
-    movement_costs: dict[tuple[LocationT, LocationT], int] = field(init=False)
-    end_locs: dict[Apod, list[LocationT]] = field(init=False)
+class GraphInfo:
+    tunnel_depth: int
+    graph: dict[Location, list[Location]] = field(init=False)
+    distance: dict[tuple[Location, Location], int] = field(init=False)
+    # end_board_state: BoardState = field(init=False)
 
-    tunnel_depth: InitVar[int]
+    def __post_init__(self):
+        self.graph = build_location_graph(self.tunnel_depth)
+        self.distance = calculate_distances(self.tunnel_depth)
 
-    def __post_init__(self, tunnel_depth: int):
-        self.graph = self.build_location_graph(tunnel_depth)
-        self.movement_costs = self.calculate_move_costs()
-        self.end_locs = {
-            apod: [self.Loc[f"{apod.name}{i}"] for i in range(tunnel_depth)]
-            for apod in Apod
-        }
-
-    def move_cost(self, apod: Apod, start: LocationT, end: LocationT) -> int:
-        return APOD_MOVE_COSTS[apod] * self.movement_costs[(start, end)]
-
-    def build_location_graph(
-        self, tunnel_depth: int
-    ) -> dict[LocationT, dict[LocationT, int]]:
-        """Build the full location graph"""
-        # Build the location graph given the enu
-        # Start with the base locations that will always be there.
-        location_graph: dict[LocationT, dict[LocationT, int]] = defaultdict(dict)
-        for loc0_name, base_loc_dict in BASE_LOCATION_GRAPH.items():
-            loc0 = self.Loc[loc0_name]
-            for loc1_name, movement_cost in base_loc_dict.items():
-                loc1 = self.Loc[loc1_name]
-                location_graph[loc0][loc1] = movement_cost
-
-        # Add the locations we defined based on the input, if necessary
-        for i in range(2, tunnel_depth):
-            for apod in Apod:
-                this_loc = self.Loc[f"{apod.name}{i}"]
-                above = self.Loc[f"{apod.name}{i-1}"]
-                location_graph[this_loc][above] = 1
-                location_graph[above][this_loc] = 1
-
-                if i < tunnel_depth - 1:
-                    below = self.Loc[f"{apod.name}{i+1}"]
-                    location_graph[this_loc][below] = 1
-                    location_graph[below][this_loc] = 1
-
-        return location_graph
-
-    def calculate_move_costs(self) -> dict[tuple[LocationT, LocationT], int]:
-        costs: dict[tuple[LocationT, LocationT], int] = {}
-        frontier: set[tuple[LocationT, LocationT, int]] = set()
-
-        # Prime with zeroth order
-        for loc in self.Loc:
-            costs[(loc, loc)] = 0
-
-        # prime with first order
-        for loc0, loc1_dict in self.graph.items():
-            for loc1, cost in loc1_dict.items():
-                costs[(loc0, loc1)] = cost
-                frontier.add((loc0, loc1, cost))
-
-        # Add all other orders by traversing graph
-        while frontier:
-            loc0, loc1, cost01 = frontier.pop()
-
-            for loc2, cost12 in self.graph[loc1].items():
-                new_pair = (loc0, loc2)
-                new_cost = cost01 + cost12
-                if new_pair not in costs:
-                    frontier.add((loc0, loc2, new_cost))
-                    costs[new_pair] = new_cost
-                elif costs[(new_pair)] > new_cost:
-                    frontier.discard((loc0, loc2, costs[new_pair]))
-                    frontier.add((loc0, loc2, new_cost))
-                    costs[new_pair] = new_cost
-
-        return costs
-
-
-# @dataclass(frozen=True, init=False)
-class State(ABC):
-    # A: tuple[Location, ...]
-    # B: tuple[Location, ...]
-    # C: tuple[Location, ...]
-    # D: tuple[Location, ...]
-
-    num_apods_per_type: int
-    current_state_dict: dict[Apod, tuple[Location, ...]]
-    occupied_locations: set[Location]
-
-    def __init__(self, locations: Mapping[Apod, Iterable[Location]]):
-        self.current_state_dict = {
-            apod: tuple(sorted(locations[apod])) for apod in Apod
-        }
-        self.occupied_locations = set(
-            itertools.chain(*self.current_state_dict.values())
+    def direct_move_cost(self, apod_state: ApodState, destination: Location) -> int:
+        return (
+            self.distance[(apod_state.location, destination)]
+            * apod_state.apod.move_cost
         )
 
-    def apod_locs(self, apod: Apod) -> tuple[Location, ...]:
-        return self.current_state_dict[apod]
 
-    def neighbors(
-        self: "StateT", loc_info: LocationInfo
-    ) -> "Iterable[tuple[StateT, int]]":
-        # print(f"{current_state_dict=}")
+# @dataclass(frozen=True)
+# class BoardInfo:
+#     tunnel_depth: InitVar[int]
+#     hallway_locations: tuple[Location] = field(init=False)
+#     tunnel_locations: frozendict[Apod, list[Location]] = field(init=False)
 
-        # Try to move each apod type
-        for apod, current_apod_locs in self.current_state_dict.items():
-            # Try to move each individual apod within the type
-            for current_loc_idx, current_loc in enumerate(current_apod_locs):
-                # Find possible next steps
-                for next_loc in loc_info.graph[current_loc].keys():
-                    # print(f"{current_loc=} {next_loc=}")
-                    if next_loc not in self.occupied_locations:
-                        cost = loc_info.move_cost(apod, current_loc, next_loc)
-                        # print(f"{cost=}")
-                        next_locs = tuple(
-                            sorted(
-                                [
-                                    *current_apod_locs[:current_loc_idx],
-                                    next_loc,
-                                    *current_apod_locs[current_loc_idx + 1 :],
-                                ]
-                            )
-                        )
-                        next_state_dict: dict[Apod, Iterable[Location]] = {
-                            **self.current_state_dict,
-                            apod: next_locs,
-                        }
-                        # print(f"{next_state_dict}")
-                        yield self.__class__(next_state_dict), cost
+#     def __post_init__(self, tunnel_depth: int):
+#         hallway_locations = (
+#             Location(0, 0),
+#             *[Location(x, 0) for x in range(1, 10, 2)],
+#             Location(0, 10),
+#         )
+#         tunnel_locations = {
+#             apod.value: [
+#                 Location(apod.value.destination_x, depth)
+#                 for depth in range(-1, tunnel_depth - 1, -1)
+#             ]
+#             for apod in Apods
+#         }
+#         object.__setattr__(self, "hallway_locations", hallway_locations)
+#         object.__setattr__(self, "tunnel_locations", tunnel_locations)
 
 
-StateT = TypeVar("StateT", bound=State)
+def pretty_print_template(tunnel_depth: int) -> str:
+    top = "#############"
+    hallway_template = "#{}{}.{}.{}.{}.{}{}#"
+    tunnel_top_template = "###{}#{}#{}#{}###"
+    tunnel_depths_templates = ["  #{}#{}#{}#{}#"] * (tunnel_depth - 1)
+    bottom = "  #########"
+    return "\n".join(
+        [
+            top,
+            hallway_template,
+            tunnel_top_template,
+            *tunnel_depths_templates,
+            bottom,
+        ]
+    )
 
 
-class Part1State(State):
-    num_apods_per_type = 2
-    # A0: Part1Location
-    # A1: Part1Location
-    # B0: Part1Location
-    # B1: Part1Location
-    # C0: Part1Location
-    # C1: Part1Location
-    # D0: Part1Location
-    # D1: Part1Location
+@dataclass(frozen=True, order=True)
+class BoardState:
+    apod_states: frozenset[ApodState]
+
+    # def __post_init__(self):
+    #     object.__setattr__(
+    #         self,
+    #         "occupied_locations",
+    #         frozenset(apod_state.location for apod_state in self.apod_states),
+    #     )
+    #     object.__setattr__(
+    #         self, "tunnel_depth", len(self.occupied_locations) // len(Apods)
+    #     )
+
+    def is_occupied(self, location: Location) -> bool:
+        return location in self.occupied_locations
+
+    @property
+    @cache
+    def tunnel_depth(self) -> int:
+        return len(self.occupied_locations) // len(Apods)
+
+    @property
+    @cache
+    def occupied_locations(self) -> set[Location]:
+        return {apod_state.location for apod_state in self.apod_states}
+
+    @property
+    @cache
+    def apods_by_location(self) -> dict[Location, Apod]:
+        return {apod_state.location: apod_state.apod for apod_state in self.apod_states}
+
+    @cache
+    def apod_at_location(self, location: Location) -> "Apod | None":
+        return self.apods_by_location.get(location)
+
+    @cache
+    def apods_in_tunnel(self, tunnel_x: int) -> set[Apod]:
+        return {
+            apod_state.apod
+            for apod_state in self.apod_states
+            if apod_state.location.x == tunnel_x
+        }
+
+    @property
+    @cache
+    def non_terminal_apod_states(self) -> set[ApodState]:
+        return {apod_state for apod_state in self.apod_states if False}
+
+    def is_occupied_with_correct_type(
+        self, location: Location, correct_apod: Apod
+    ) -> bool:
+        return self.is_occupied(location) and self.apod_at_location == correct_apod
+
+    @cache
+    def next_end_location(self, apod_state: ApodState) -> "Location | None":
+        for depth in range(self.tunnel_depth, 0, -1):
+            bottom = Location(y=depth, x=apod_state.apod.destination_x)
+            if not self.is_occupied_with_correct_type(bottom, apod_state.apod):
+                return bottom
+        else:
+            return None
+
+    # def __lt__(self, other: "BoardState"):
+    #     return sorted(self.apod_states) < sorted(other.apod_states)
+
+    def pretty_print(self) -> str:
+
+        sorted_apods = sorted(self.apod_states, key=lambda s: s.location)
+        # print(sorted_apods)
+        all_locs = all_locations(self.tunnel_depth)
+        next_apod = sorted_apods.pop(0)
+        loc_strs = ["."] * len(all_locs)
+        for idx, loc in enumerate(all_locs):
+            if loc == next_apod.location:
+                loc_strs[idx] = next_apod.apod.name
+                try:
+                    next_apod = sorted_apods.pop(0)
+                except IndexError:
+                    break
+            # print(loc, loc_strs[-1])
+
+        template = pretty_print_template(self.tunnel_depth)
+        return template.format(*loc_strs)
+
+    # num_apods_per_type: int
+    # current_state_dict: dict[Apod, tuple[Location, ...]]
+
+    # def __init__(self, locations: Mapping[Apod, Iterable[Location]]):
+    #     self.current_state_dict = {
+    #         apod: tuple(sorted(locations[apod])) for apod in Apod
+    #     }
+    #     self.occupied_locations = set(
+    #         itertools.chain(*self.current_state_dict.values())
+    #     )
+
+    # def apod_locs(self, apod: Apod) -> tuple[Location, ...]:
+    #     return self.current_state_dict[apod]
+
+    # def generate_next_states(
+    #     self, graph: GraphInfo
+    # ) -> Iterator[tuple["BoardState", int]]:
+    #     """Generate legal successor states and their costs"""
+    #     room_depth = self.tunnel_depth
+
+    #     def generate_legal_moves(
+    #         pod: AmphipodState,
+    #     ) -> Iterator[tuple[AmphipodState, int]]:
+    #         # If a pod is in its home room, and no pods of a different type are below it,
+    #         # move to the lowest available position.
+    #         if (
+    #             pod.position.x == pod.type.destination_x
+    #             and not pod.position.in_hallway()
+    #             and all(
+    #                 p.type is p
+    #                 for p in self.amphipods
+    #                 if p.position.x == pod.position.x and p.position.y > pod.position.y
+    #             )
+    #         ):
+    #             dest_y = pod.position.y + 1
+    #             while dest_y <= room_depth and not self.is_position_occupied(
+    #                 replace(pod.position, y=dest_y)
+    #             ):
+    #                 dest_y += 1
+    #             dest_y -= 1
+    #             if dest_y > pod.position.y:
+    #                 yield replace(
+    #                     pod, position=replace(pod.position, y=dest_y), at_rest=True
+    #                 ), dest_y - pod.position.y
+    #             return
+
+    #         # If a pod is stopped in the hallway, it can only move if it can reach its
+    #         # destination, and then it must move toward its destination or into its room.
+    #         if pod.position.in_hallway() and can_reach_destination(pod):
+    #             dest_y = 1
+    #             while dest_y <= room_depth and not self.is_position_occupied(
+    #                 Position(pod.type.destination_x, dest_y)
+    #             ):
+    #                 dest_y += 1
+    #             dest_y -= 1
+    #             yield replace(
+    #                 pod, position=Position(pod.type.destination_x, dest_y), at_rest=True
+    #             ), abs(pod.position.x - pod.type.destination_x) + dest_y
+    #             return
+    #         if pod.position.in_hallway() and pod is not self.last_moved:
+    #             return
+
+    #         # If a pod is in a room and all positions above it are clear, move out of the room.
+    #         if not pod.position.in_hallway() and all(
+    #             not self.is_position_occupied(replace(pod.position, y=y))
+    #             for y in range(0, pod.position.y)
+    #         ):
+    #             yield replace(pod, position=replace(pod.position, y=0)), pod.position.y
+    #             return
+
+    #         for next_pos in board.neighbors(pod.position):
+    #             # All legal moves out of the hallway have been covered above.
+    #             if pod.position.in_hallway() and not next_pos.in_hallway():
+    #                 continue
+    #             if self.is_position_occupied(next_pos):
+    #                 continue
+    #             yield replace(pod, position=next_pos), 1
+
+    #     def can_reach_destination(pod: AmphipodState) -> bool:
+    #         here = pod.position.x
+    #         there = pod.type.destination_x
+    #         clear_range = range(there, here, sign(here - there))
+
+    #         if any(self.is_position_occupied(Position(x, 0)) for x in clear_range):
+    #             return False
+    #         if self.is_position_occupied(Position(there, 1)):
+    #             return False
+    #         if any(
+    #             p.type is not pod.type and p.position.x == there for p in self.amphipods
+    #         ):
+    #             return False
+    #         return True
+
+    #     # Otherwise, loop through legal successor states
+    #     for pod in self.amphipods:
+    #         if not pod.at_rest:
+    #             for next_position, move_count in generate_legal_moves(pod):
+    #                 yield move_pod(
+    #                     self, pod, next_position
+    #                 ), pod.type.movement_cost * move_count
+
+    def neighbors(self, graph: GraphInfo) -> "Iterable[tuple[BoardState, int]]":
+        # print("neighbors")
+        # Try to move each apod
+        for apod_state in self.apod_states:
+            states_minus_apod = set(self.apod_states)
+            states_minus_apod.discard(apod_state)
+            # print(f"Moving {apod_state}")
+            # print(f"Others {states_minus_apod}")
+
+            # Find possible next steps
+            for next_loc in graph.graph[apod_state.location]:
+                # Can I move here?
+
+                if next_loc in self.occupied_locations:
+                    # occupied
+                    continue
+                # into my tunnel
+                elif next_loc.x == apod_state.destination_x:
+                    # is the tunnel clear of other apods?
+                    apods_in_tunnel = set(self.apods_in_tunnel(next_loc.x))
+                    if apods_in_tunnel and apods_in_tunnel != {apod_state.apod}:
+                        # There are other apods in the tunnel. Can't go in yet.
+                        continue
+                # in another tunnel
+                elif next_loc.x == apod_state.location.x:
+                    # Am I moving out of the tunnel?
+                    if next_loc.y >= apod_state.location.y:
+                        # No, moving deeper in
+                        continue
+
+                # I think this state should be ok
+
+                # print(f"{apod_state.location=} {next_loc=}")
+                cost = graph.direct_move_cost(apod_state, next_loc)
+                # print(f"{cost=}")
+
+                new_states = frozenset({apod_state.move(next_loc), *states_minus_apod})
+                # print(f"{new_states=}")
+                yield self.__class__(new_states), cost
 
 
-class Part2State(State):
-    num_apods_per_type = 4
-    # A0: Part2Location
-    # A1: Part2Location
-    # A2: Part2Location
-    # A3: Part2Location
-    # B0: Part2Location
-    # B1: Part2Location
-    # B2: Part2Location
-    # B3: Part2Location
-    # C0: Part2Location
-    # C1: Part2Location
-    # C2: Part2Location
-    # C3: Part2Location
-    # D0: Part2Location
-    # D1: Part2Location
-    # D2: Part2Location
-    # D3: Part2Location
+def end_state(tunnel_depth: int) -> BoardState:
+    return BoardState(
+        frozenset(
+            ApodState(
+                location=Location(x=apod.value.destination_x, y=depth), apod_enum=apod
+            )
+            for apod in Apods
+            for depth in range(1, tunnel_depth + 1)
+        )
+    )
 
 
 @dataclass(frozen=True, order=True)
 class PrioritizableState:
     priority: float
-    state: State = field(compare=False)
+    state: BoardState = field(compare=False)
 
-    def neighbors(self, loc_info: LocationInfo) -> Iterable[tuple[State, int]]:
-        return self.state.neighbors(loc_info)
-
-
-def heuristic(s: State, loc_info: LocationInfo) -> int:
-    return sum(apod_heuristic(apod, s, loc_info) for apod in Apod)
+    def neighbors(self, graph: GraphInfo) -> Iterable[tuple[BoardState, int]]:
+        return self.state.neighbors(graph)
 
 
-def apod_heuristic(
-    apod: Apod,
-    s: State,
-    loc_info: LocationInfo,
-) -> int:
-    """Cost to move the amphipods of type apod from their locations to the end,
-    (mostly) ignoring all other amphipods"""
-    locs = s.apod_locs(apod)
-    all_occupied_locs = s.occupied_locations
-    non_apod_locs = all_occupied_locs - set(locs)
-    end_locs = loc_info.end_locs[apod]
-    end_locs_s = set(end_locs)
-    num_end_locs = len(end_locs)
-    non_apod_in_end_locs = [end_loc in non_apod_locs for end_loc in end_locs]
-    empty_end_locs = [end_loc not in all_occupied_locs for end_loc in end_locs]
-    empty_or_non_apod_end_locs = [
-        end_loc
-        for end_loc, na, empty in zip(end_locs, non_apod_in_end_locs, empty_end_locs)
-        if na or empty
-    ]
-
-    estimated_costs = [0] * len(locs)
-    if locs == end_locs:
-        # Fast path if everything is in the right place
-        return 0
-    for loc_idx, loc in enumerate(locs):
-        if loc in end_locs_s:
-            # This one is in an end loc of the right type
-            end_loc_idx = end_locs.index(loc)
-
-            # Are there any incorrect apods trapped below this one?
-            if any(non_apod_in_end_locs[:end_loc_idx]):
-                # Need to move this apod out of the way and back.
-                # num_end_locs - loc_idx to move up + 2 for the move out to the hall
-                unblock_move_cost = 2 + num_end_locs - loc_idx
-
-                # We double it because we need to move out then back
-                estimated_costs[loc_idx] = 2 * unblock_move_cost
-            # Are there any empties below this?
-            elif any(empty_end_locs[:end_loc_idx]):
-                # Simply move down
-                estimated_costs[loc_idx] = sum(empty_end_locs[:end_loc_idx])
-            else:
-                # No non-apods and no empties = everything below is correct
-                # No move required
-                estimated_costs[loc_idx] = 0
+def heuristic(state: BoardState, graph: GraphInfo) -> int:
+    """Minimum cost for all pods to move directly 'home', without impediment"""
+    result = 0
+    # count_need_to_go_home_by_type: dict[Apod, int] = defaultdict(int)
+    for apod_state in state.apod_states:
+        is_at_destination = apod_state.at_destination
+        if is_at_destination:
+            result += 0
         else:
-            # Ordinary move
-            # We average the cost to move to any end loc
-            estimated_costs[loc_idx] = sum(
-                loc_info.move_cost(apod, locs[loc_idx], end_loc)
-                for end_loc in empty_or_non_apod_end_locs
-            ) // len(empty_or_non_apod_end_locs)
+            next_unoccupied_end = state.next_end_location(apod_state)
+            assert next_unoccupied_end is not None
+            result += (
+                graph.distance[(apod_state.location, next_unoccupied_end)]
+                * apod_state.apod.move_cost
+            )
+            # count_need_to_go_home_by_type[apod_state.apod] += int(
+            #     not apod_state.at_destination
+            # )
 
-    return sum(estimated_costs)
+    # for type, count in count_need_to_go_home_by_type.items():
+    #     result += type.move_cost * count * (count + 1) // 2
+
+    return result
 
 
-def solve(start: State, end: State, loc_info: LocationInfo) -> tuple[int, list[State]]:
+# def apod_heuristic(
+#     apod: Apods,
+#     s: BoardState,
+#     graph: GraphInfo,
+# ) -> int:
+#     """Cost to move the amphipods of type apod from their locations to the end,
+#     (mostly) ignoring all other amphipods"""
+#     locs = s.apod_locs(apod)
+#     all_occupied_locs = s.occupied_locations
+#     non_apod_locs = all_occupied_locs - set(locs)
+#     end_locs = graph.end_locs[apod]
+#     end_locs_s = set(end_locs)
+#     num_end_locs = len(end_locs)
+#     non_apod_in_end_locs = [end_loc in non_apod_locs for end_loc in end_locs]
+#     empty_end_locs = [end_loc not in all_occupied_locs for end_loc in end_locs]
+#     empty_or_non_apod_end_locs = [
+#         end_loc
+#         for end_loc, na, empty in zip(end_locs, non_apod_in_end_locs, empty_end_locs)
+#         if na or empty
+#     ]
+
+#     estimated_costs = [0] * len(locs)
+#     if locs == end_locs:
+#         # Fast path if everything is in the right place
+#         return 0
+#     for loc_idx, loc in enumerate(locs):
+#         if loc in end_locs_s:
+#             # This one is in an end loc of the right type
+#             end_loc_idx = end_locs.index(loc)
+
+#             # Are there any incorrect apods trapped below this one?
+#             if any(non_apod_in_end_locs[:end_loc_idx]):
+#                 # Need to move this apod out of the way and back.
+#                 # num_end_locs - loc_idx to move up + 2 for the move out to the hall
+#                 unblock_move_cost = 2 + num_end_locs - loc_idx
+
+#                 # We double it because we need to move out then back
+#                 estimated_costs[loc_idx] = 2 * unblock_move_cost
+#             # Are there any empties below this?
+#             elif any(empty_end_locs[:end_loc_idx]):
+#                 # Simply move down
+#                 estimated_costs[loc_idx] = sum(empty_end_locs[:end_loc_idx])
+#             else:
+#                 # No non-apods and no empties = everything below is correct
+#                 # No move required
+#                 estimated_costs[loc_idx] = 0
+#         else:
+#             # Ordinary move
+#             # We average the cost to move to any end loc
+#             estimated_costs[loc_idx] = sum(
+#                 graph.move_cost(apod, locs[loc_idx], end_loc)
+#                 for end_loc in empty_or_non_apod_end_locs
+#             ) // len(empty_or_non_apod_end_locs)
+
+#     return sum(estimated_costs)
+
+
+def solve(
+    start: BoardState, end: BoardState, graph: GraphInfo
+) -> tuple[int, list[BoardState]]:
     frontier: PriorityQueue[PrioritizableState] = PriorityQueue()
     frontier.put(PrioritizableState(0, start))
-    came_from: dict[State, State] = dict()
-    cost_so_far: dict[State, int] = dict()
+    came_from: dict[BoardState, BoardState] = dict()
+    cost_so_far: dict[BoardState, int] = dict()
     cost_so_far[start] = 0
+
+    # debug_total_num_steps = 10000
+    # debug_num_steps = 0
 
     while not frontier.empty():
         current = frontier.get()
 
+        # if debug_num_steps == debug_total_num_steps:
+        #     # print("debug stop")
+        #     end = current.state
+        #     break
+
         if current.state == end:
+            # print("at end")
             break
 
-        for next_state, next_state_move_cost in current.neighbors(loc_info):
+        for next_state, next_state_move_cost in current.neighbors(graph):
             new_cost = cost_so_far[current.state] + next_state_move_cost
             if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
                 cost_so_far[next_state] = new_cost
-                priority = new_cost + heuristic(next_state, loc_info)
+                priority = new_cost + heuristic(next_state, graph)
                 frontier.put(PrioritizableState(priority, next_state))
                 came_from[next_state] = current.state
+
+        # debug_num_steps += 1
 
     # unwind path
     path = []
@@ -483,82 +958,47 @@ def solve(start: State, end: State, loc_info: LocationInfo) -> tuple[int, list[S
     return cost_so_far.get(end, -1), path[::-1]
 
 
-def pretty_print(state: State, Loc: Type[Location]) -> str:
-    loc_strs = {loc: "." for loc in Loc}
-    for loc_name, locs in asdict(state).items():
-        # locs = cast(tuple[Location, ...], locs)
-        for loc in locs:
-            loc_strs[loc] = loc_name
-    template_top = """\
-#############
-#{}{}.{}.{}.{}.{}{}#
-###{}#{}#{}#{}###"""
-    template_bottom = "  #########"
-    template_middle = ["  #{}#{}#{}#{}#"] * (1 if len(loc_strs) == 15 else 3)
-    template = "\n".join([template_top, *template_middle, template_bottom])
-    return template.format(*[loc_strs[loc] for loc in Loc])
+def parse_lines(
+    lines: Iterable[str], tunnel_depth: int
+) -> tuple[BoardState, BoardState, GraphInfo]:
+    lines = [line.strip() for line in lines if line]
+
+    apod_chars = set("ABCD")
+    apod_states: list[ApodState] = []
+    for depth, line in enumerate(lines[2:], start=1):
+        if line.startswith("###"):
+            line = line[2:-2]
+        for x, c in enumerate(line, start=1):
+            if c in apod_chars:
+                try:
+                    loc = Location(x=x, y=depth)
+                except AssertionError:
+                    print(f"{line=} {depth=} {x=} {c=}")
+                    raise
+                apod_states.append(ApodState(location=loc, apod_enum=Apods[c]))
+
+    # print(apod_states)
+    start = BoardState(frozenset(apod_states))
+    # print(start)
+    graph_info = GraphInfo(tunnel_depth)
+
+    return start, end_state(tunnel_depth), graph_info
 
 
-def parse_lines(lines: Iterable[str], part: int) -> tuple[State, State, LocationInfo]:
-    lines = [line for line in lines if line]
-    tunnel_depth = 2 if part == 1 else 4
+def solution(lines: Iterable[str], tunnel_depth: int) -> int:
+    start, end, graph = parse_lines(lines, tunnel_depth)
 
-    # Define the enum of the locations
-    Loc: Type[Location] = Part1Location if part == 1 else Part2Location
-
-    # This is a static structure defining the labels for the starting (and ending) locs
-    starting_locs = [
-        [Loc[f"{apod.name}{idx}"] for apod in Apod] for idx in range(tunnel_depth)
-    ]
-
-    # parse the lines to pull out the order of the starting apods
-    tunnel_start_line = 2
-    tunnel_end = tunnel_start_line + tunnel_depth
-    starting_apods = [lines[tunnel_start_line][3:-3].split("#")]
-    for line in lines[tunnel_start_line + 1 : tunnel_end]:
-        starting_apods.append(line.strip()[1:-1].split("#"))
-
-    # Map starting apods to their location enum values
-    apod_to_locs: Mapping[Apod, list[Location]] = defaultdict(list)
-    for loc_line, starting_apod_line in zip(starting_locs, starting_apods):
-        for loc, starting_apod in zip(loc_line, starting_apod_line):
-            apod_to_locs[Apod[starting_apod]].append(loc)
-    # Create the starting State
-    state_cls = Part1State if part == 1 else Part2State
-    start = state_cls(apod_to_locs)
-
-    # ending state: all apods are in their destination locations
-    end = state_cls(
-        {
-            apod: tuple(
-                Loc[f"{apod.name}{idx}"] for idx in range(tunnel_depth)  # type:ignore
-            )
-            for apod in Apod
-        }
-    )
-
-    # loc_info holds the graph and movement costs
-    loc_info = LocationInfo(Loc, tunnel_depth)  # type:ignore
-
-    return start, end, loc_info
-
-    # loc_info holds the graph and movement costs
-    loc_info = LocationInfo(Loc, tunnel_depth)  # type:ignore
-
-
-def solution(lines: Iterable[str], part: int) -> int:
-    start, end, loc_info = parse_lines(lines, part)
-    cost, path = solve(start, end, loc_info)
+    cost, path = solve(start, end, graph)
     for state in path:
-        print(pretty_print(state, loc_info.Loc))
+        print(state.pretty_print())
     return cost
 
 
 def part_one(lines: Iterable[str]) -> int:
-    return solution(lines, 1)
+    return solution(lines, 2)
 
 
 def part_two(lines: Iterable[str]) -> int:
     lines = [line for line in lines if line]
     lines = lines[:3] + ["  #D#C#B#A#", "  #D#B#A#C#"] + lines[3:]
-    return solution(lines, 2)
+    return solution(lines, 4)
