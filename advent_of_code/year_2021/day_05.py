@@ -35,6 +35,10 @@ LineBounds = tuple[int, int, int, int]
 Point = tuple[int, int]
 
 
+def sgn(x: int) -> int:
+    return int(copysign(1, x))
+
+
 def parse_line(line: str) -> LineBounds:
     """
     Given a string
@@ -84,8 +88,8 @@ def line_bounds_to_points(
 
     # Are x and y increasing or decreasing?
     # Need to know whether to add 1 or subtract 1 to generate sequence.
-    x_step = int(copysign(1, x_diff))
-    y_step = int(copysign(1, y_diff))
+    x_step = sgn(x_diff)
+    y_step = sgn(y_diff)
 
     # x and y sequences
     x_range = range(start_x, end_x + x_step, x_step)
