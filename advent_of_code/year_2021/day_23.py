@@ -139,6 +139,12 @@ class ApodState:
     apod_enum: Apods
     location: Location
 
+    heuristic: int = field(init=False)
+
+    def __post_init__(self):
+        heuristic = self.heuristic_distance * self.move_cost
+        object.__setattr__(self, "heuristic", heuristic)
+
     @property
     def apod(self) -> Apod:
         return self.apod_enum.value
@@ -175,10 +181,6 @@ class ApodState:
         # If we're in our tunnel, distance is 0
         # Otherwise we need distance up to hallway, over to tunnel, then 1 to enter
         return 0 if x_distance == 0 else x_distance + y_distance + 1
-
-    @property
-    def heuristic(self) -> int:
-        return self.heuristic_distance * self.move_cost
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.apod.name}, {self.location})"
