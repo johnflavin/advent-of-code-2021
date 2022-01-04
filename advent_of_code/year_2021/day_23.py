@@ -64,7 +64,9 @@ from dataclasses import InitVar, asdict, dataclass, field
 from enum import Enum
 from functools import cache
 from queue import PriorityQueue
+from typing import Optional
 
+from .day_05 import sgn
 
 EXAMPLE = """\
 #############
@@ -586,6 +588,7 @@ def pretty_print_template(tunnel_depth: int) -> str:
 @dataclass(frozen=True, order=True)
 class BoardState:
     apod_states: frozenset[ApodState]
+    # last_moved: Optional[ApodState] = field(default=None)
 
     # def __post_init__(self):
     #     object.__setattr__(
@@ -630,7 +633,7 @@ class BoardState:
     @property
     @cache
     def non_terminal_apod_states(self) -> set[ApodState]:
-        return {apod_state for apod_state in self.apod_states if False}
+        return {apod_state for apod_state in self.apod_states if True}
 
     def is_occupied_with_correct_type(
         self, location: Location, correct_apod: Apod
@@ -682,132 +685,230 @@ class BoardState:
     # def apod_locs(self, apod: Apod) -> tuple[Location, ...]:
     #     return self.current_state_dict[apod]
 
-    # def generate_next_states(
-    #     self, graph: GraphInfo
-    # ) -> Iterator[tuple["BoardState", int]]:
-    #     """Generate legal successor states and their costs"""
-    #     room_depth = self.tunnel_depth
+    def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
+        """Generate legal successor states and their costs"""
 
-    #     def generate_legal_moves(
-    #         pod: AmphipodState,
-    #     ) -> Iterator[tuple[AmphipodState, int]]:
-    #         # If a pod is in its home room, and no pods of a different type are below it,
-    #         # move to the lowest available position.
-    #         if (
-    #             pod.position.x == pod.type.destination_x
-    #             and not pod.position.in_hallway()
-    #             and all(
-    #                 p.type is p
-    #                 for p in self.amphipods
-    #                 if p.position.x == pod.position.x and p.position.y > pod.position.y
-    #             )
-    #         ):
-    #             dest_y = pod.position.y + 1
-    #             while dest_y <= room_depth and not self.is_position_occupied(
-    #                 replace(pod.position, y=dest_y)
-    #             ):
-    #                 dest_y += 1
-    #             dest_y -= 1
-    #             if dest_y > pod.position.y:
-    #                 yield replace(
-    #                     pod, position=replace(pod.position, y=dest_y), at_rest=True
-    #                 ), dest_y - pod.position.y
-    #             return
+        # def generate_legal_moves(
+        #     apod_state: ApodState,
+        # ) -> Iterable[Location]:
+        #     # Three possibilities:
+        #     # 1. We're already in our tunnel
+        #     # 1a. But we're trapping a wrong apod underneath
+        #     # 1b. Nothing underneath but correct apods or empty spaces
+        #     # 2. We're in a wrong tunnel
+        #     # # If a pod is in its home room and no pods of a different type are below it,
+        #     # # move to the lowest available position.
+        #     # if apod_state.at_destination and all(
+        #     #     other.apod is apod_state.apod
+        #     #     for other in self.apod_states
+        #     #     if other.location.x == apod_state.location.x
+        #     #     and other.location.y > apod_state.location.y
+        #     # ):
+        #     #     for depth in range(self.tunnel_depth, apod_state.location.y, -1):
+        #     #         depth_loc = Location(x=apod_state.location.x, y=depth)
+        #     #         if self.is_occupied(depth_loc):
+        #     #             continue
+        #     #         yield depth_loc
+        #     #         return
 
-    #         # If a pod is stopped in the hallway, it can only move if it can reach its
-    #         # destination, and then it must move toward its destination or into its room.
-    #         if pod.position.in_hallway() and can_reach_destination(pod):
-    #             dest_y = 1
-    #             while dest_y <= room_depth and not self.is_position_occupied(
-    #                 Position(pod.type.destination_x, dest_y)
-    #             ):
-    #                 dest_y += 1
-    #             dest_y -= 1
-    #             yield replace(
-    #                 pod, position=Position(pod.type.destination_x, dest_y), at_rest=True
-    #             ), abs(pod.position.x - pod.type.destination_x) + dest_y
-    #             return
-    #         if pod.position.in_hallway() and pod is not self.last_moved:
-    #             return
+        #     # Can the pod reach its destination?
+        #     # If so, and if there are no wrong apods there,
+        #     # go to the first unoccupied space.
+        #     if can_reach_destination_tunnel(apod_state):
+        #         lowest_unoccupied: Optional[Location] = None
+        #         for depth in range(self.tunnel_depth, apod_state.location.y, -1):
+        #             depth_loc = Location(x=apod_state.destination_x, y=depth)
+        #             if self.is_occupied(depth_loc):
+        #                 if self.apods_by_location[depth_loc] != apod_state.apod:
+        #                     # There's a different apod here. Can't move
+        #                     break
+        #                 else:
+        #                     # occupied, but by a correct apod
+        #                     continue
+        #             # Not occupied!
+        #             lowest_unoccupied = lowest_unoccupied or depth_loc
+        #         else:
+        #             # we didn't break which means all the
+        #             ...
 
-    #         # If a pod is in a room and all positions above it are clear, move out of the room.
-    #         if not pod.position.in_hallway() and all(
-    #             not self.is_position_occupied(replace(pod.position, y=y))
-    #             for y in range(0, pod.position.y)
-    #         ):
-    #             yield replace(pod, position=replace(pod.position, y=0)), pod.position.y
-    #             return
+        #     # If a pod is in a room and all positions above it are clear,
+        #     # move out of the room.
+        #     if (
+        #         not apod_state.in_hallway
+        #         and not apod_state.location.y == 1
+        #         and all(
+        #             not self.is_occupied(Location(x=apod_state.location.x, y=y))
+        #             for y in range(1, apod_state.location.y)
+        #         )
+        #     ):
+        #         yield Location(x=apod_state.location.x, y=1)
+        #         return
 
-    #         for next_pos in board.neighbors(pod.position):
-    #             # All legal moves out of the hallway have been covered above.
-    #             if pod.position.in_hallway() and not next_pos.in_hallway():
-    #                 continue
-    #             if self.is_position_occupied(next_pos):
-    #                 continue
-    #             yield replace(pod, position=next_pos), 1
+        #     for next_loc in graph.graph[apod_state.location]:
+        #         if self.is_occupied(next_loc):
+        #             continue
+        #         if (
+        #             apod_state.in_hallway
+        #             and next_loc.y > 0
+        #             and next_loc.x != apod_state.destination_x
+        #         ):
+        #             # Cannot move from hallway into a tunnel that isn't our destination
+        #             continue
+        #         yield next_loc
 
-    #     def can_reach_destination(pod: AmphipodState) -> bool:
-    #         here = pod.position.x
-    #         there = pod.type.destination_x
-    #         clear_range = range(there, here, sign(here - there))
+        # def can_reach_destination_tunnel(pod: ApodState) -> bool:
+        #     # Do a mini graph traversal here to see if we can find the destination
+        #     frontier: set[Location] = set(graph.graph[pod.location])
+        #     have_seen: set[Location] = {pod.location}
+        #     while frontier:
+        #         loc = frontier.pop()
 
-    #         if any(self.is_position_occupied(Position(x, 0)) for x in clear_range):
-    #             return False
-    #         if self.is_position_occupied(Position(there, 1)):
-    #             return False
-    #         if any(
-    #             p.type is not pod.type and p.position.x == there for p in self.amphipods
-    #         ):
-    #             return False
-    #         return True
+        #         if self.is_occupied(loc):
+        #             # Can't move here
+        #             continue
+        #         if loc.x == pod.destination_x:
+        #             # Hit the destination
+        #             return True
 
-    #     # Otherwise, loop through legal successor states
-    #     for pod in self.amphipods:
-    #         if not pod.at_rest:
-    #             for next_position, move_count in generate_legal_moves(pod):
-    #                 yield move_pod(
-    #                     self, pod, next_position
-    #                 ), pod.type.movement_cost * move_count
+        #         # We can move here, but it isn't our destination.
+        #         # Mark that we've seen this one
+        #         have_seen.add(loc)
 
-    def neighbors(self, graph: GraphInfo) -> "Iterable[tuple[BoardState, int]]":
-        # print("neighbors")
-        # Try to move each apod
-        for apod_state in self.apod_states:
-            states_minus_apod = set(self.apod_states)
-            states_minus_apod.discard(apod_state)
-            # print(f"Moving {apod_state}")
-            # print(f"Others {states_minus_apod}")
+        #         # Add its next steps to the frontier.
+        #         for next_loc in graph.graph[loc]:
+        #             if next_loc not in have_seen:
+        #                 frontier.add(next_loc)
 
-            # Find possible next steps
-            for next_loc in graph.graph[apod_state.location]:
-                # Can I move here?
+        #     return False
 
-                if next_loc in self.occupied_locations:
-                    # occupied
+        def generate_moves(pod: ApodState) -> Iterable[Location]:
+            # Do a mini graph traversal with just this one apod
+            frontier: set[Location] = set(graph.graph[pod.location])
+            have_seen: set[Location] = {pod.location}
+            valid_destinations: set[Location] = set()
+            while frontier:
+                loc = frontier.pop()
+
+                # can't move into occupied spaces
+                if self.is_occupied(loc):
                     continue
-                # into my tunnel
-                elif next_loc.x == apod_state.destination_x:
-                    # is the tunnel clear of other apods?
-                    apods_in_tunnel = set(self.apods_in_tunnel(next_loc.x))
-                    if apods_in_tunnel and apods_in_tunnel != {apod_state.apod}:
-                        # There are other apods in the tunnel. Can't go in yet.
-                        continue
-                # in another tunnel
-                elif next_loc.x == apod_state.location.x:
-                    # Am I moving out of the tunnel?
-                    if next_loc.y >= apod_state.location.y:
-                        # No, moving deeper in
+
+                # Can we move to this space? Through it?
+                if loc.y == 0:
+                    # We can always move in the hallway
+                    valid_destinations.add(loc)
+
+                    # Mark that we've seen this one
+                    have_seen.add(loc)
+
+                    # Add its next steps to the frontier.
+                    for next_loc in graph.graph[loc]:
+                        if next_loc not in have_seen:
+                            frontier.add(next_loc)
+
+                elif loc.x != pod.destination_x:  # Not our tunnel
+                    # Are we already in the tunnel? And is this move up?
+                    if loc.x != pod.location.x or loc.y > pod.location.y:
+                        # This is either entering the wrong tunnel or moving down
+                        # when we should be moving up. Invalid.
                         continue
 
-                # I think this state should be ok
+                    # We have no reason to end a turn here, so it isn't a
+                    # valid destination. But we might have reason to move through here.
+                    # We will continue on and check other positions from here.
+                    have_seen.add(loc)
 
-                # print(f"{apod_state.location=} {next_loc=}")
+                    # Add its next steps to the frontier.
+                    for next_loc in graph.graph[loc]:
+                        if next_loc not in have_seen:
+                            frontier.add(next_loc)
+                else:  # Yes our tunnel
+                    # We can move in our tunnel if it isn't occupied by any
+                    # incorrect apods.
+                    # And if so, we will move to the lowest unoccupied space.
+                    lowest_unoccupied: "Location | None" = None
+                    for depth in range(self.tunnel_depth, 0, -1):
+                        tunnel_loc = Location(y=depth, x=loc.x)
+                        apod_in_tunnel_loc = self.apod_at_location(tunnel_loc)
+                        if apod_in_tunnel_loc is None:
+                            # unoccupied
+                            if lowest_unoccupied is None:
+                                lowest_unoccupied = tunnel_loc
+                        elif apod_in_tunnel_loc != pod.apod:
+                            # occupied, incorrect apod
+                            break
+                        else:
+                            # occupied, correct apod
+                            pass
+                    else:
+                        # We didn't find any incorrect apods
+                        # That means we can move somewhere in the tunnel
+                        assert lowest_unoccupied is not None
+                        valid_destinations.add(lowest_unoccupied)
+
+                        # Mark that we've seen this one
+                        have_seen.add(loc)
+
+                        # Add its next steps to the frontier, but only if they aren't
+                        # also in this tunnel (because we know we would just
+                        # do the same thing with them and find the same lowest position)
+                        for next_loc in graph.graph[loc]:
+                            if (
+                                next_loc not in have_seen
+                                and next_loc.x != pod.destination_x
+                            ):
+                                frontier.add(next_loc)
+
+            return valid_destinations
+
+        # loop through legal successor states
+        for apod_state in self.non_terminal_apod_states:
+            other_states = {other for other in self.apod_states if other != apod_state}
+            for next_loc in generate_moves(apod_state):
+                # print(next_loc)
                 cost = graph.direct_move_cost(apod_state, next_loc)
-                # print(f"{cost=}")
-
-                new_states = frozenset({apod_state.move(next_loc), *states_minus_apod})
-                # print(f"{new_states=}")
+                new_states = frozenset({apod_state.move(next_loc), *other_states})
                 yield self.__class__(new_states), cost
+
+    # def neighbors(self, graph: GraphInfo) -> "Iterable[tuple[BoardState, int]]":
+    #     # print("neighbors")
+    #     # Try to move each apod
+    #     for apod_state in self.apod_states:
+    #         states_minus_apod = set(self.apod_states)
+    #         states_minus_apod.discard(apod_state)
+    #         # print(f"Moving {apod_state}")
+    #         # print(f"Others {states_minus_apod}")
+
+    #         # Find possible next steps
+    #         for next_loc in graph.graph[apod_state.location]:
+    #             # Can I move here?
+
+    #             if next_loc in self.occupied_locations:
+    #                 # occupied
+    #                 continue
+    #             # into my tunnel
+    #             elif next_loc.x == apod_state.destination_x:
+    #                 # is the tunnel clear of other apods?
+    #                 apods_in_tunnel = set(self.apods_in_tunnel(next_loc.x))
+    #                 if apods_in_tunnel and apods_in_tunnel != {apod_state.apod}:
+    #                     # There are other apods in the tunnel. Can't go in yet.
+    #                     continue
+    #             # in another tunnel
+    #             elif next_loc.x == apod_state.location.x:
+    #                 # Am I moving out of the tunnel?
+    #                 if next_loc.y >= apod_state.location.y:
+    #                     # No, moving deeper in
+    #                     continue
+
+    #             # I think this state should be ok
+
+    #             # print(f"{apod_state.location=} {next_loc=}")
+    #             cost = graph.direct_move_cost(apod_state, next_loc)
+    #             # print(f"{cost=}")
+
+    #             new_states = frozenset({apod_state.move(next_loc), *states_minus_apod})
+    #             # print(f"{new_states=}")
+    #             yield self.__class__(new_states), cost
 
 
 def end_state(tunnel_depth: int) -> BoardState:
@@ -922,14 +1023,14 @@ def solve(
     cost_so_far: dict[BoardState, int] = dict()
     cost_so_far[start] = 0
 
-    # debug_total_num_steps = 10000
+    # debug_total_num_steps = 10
     # debug_num_steps = 0
 
     while not frontier.empty():
         current = frontier.get()
-
+        # print(current)
         # if debug_num_steps == debug_total_num_steps:
-        #     # print("debug stop")
+        #     print("debug stop")
         #     end = current.state
         #     break
 
@@ -941,9 +1042,9 @@ def solve(
             new_cost = cost_so_far[current.state] + next_state_move_cost
             if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
                 cost_so_far[next_state] = new_cost
+                came_from[next_state] = current.state
                 priority = new_cost + heuristic(next_state, graph)
                 frontier.put(PrioritizableState(priority, next_state))
-                came_from[next_state] = current.state
 
         # debug_num_steps += 1
 
