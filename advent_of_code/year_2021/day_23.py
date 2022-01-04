@@ -166,9 +166,15 @@ class ApodState:
 
     @property
     def heuristic_distance(self) -> int:
+        # Distance from current x to destination x
         x_distance = abs(self.destination_x - self.location.x)
+
+        # Distance from current y depth to hallway (depth 0)
         y_distance = self.location.y
-        return x_distance + ((y_distance + 1) if x_distance == 0 else 0)
+
+        # If we're in our tunnel, distance is 0
+        # Otherwise we need distance up to hallway, over to tunnel, then 1 to enter
+        return 0 if x_distance == 0 else x_distance + y_distance + 1
 
     @property
     def heuristic(self) -> int:
@@ -181,7 +187,6 @@ class ApodState:
         return self.__str__()
 
 
-@cache
 def build_location_graph(
     tunnel_depth: int,
 ) -> dict[Location, list[Location]]:
@@ -254,10 +259,11 @@ def build_location_graph(
     return graph
 
 
-def calculate_distances(tunnel_depth: int) -> dict[tuple[Location, Location], int]:
-    graph = build_location_graph(tunnel_depth)
+def calculate_distances(
+    graph: dict[Location, list[Location]]
+) -> dict[tuple[Location, Location], int]:
     distances: dict[tuple[Location, Location], int] = {}
-    frontier: set[tuple[Location, Location, int]] = set()
+    frontier: set[tuple[Location, Location]] = set()
 
     # prime with zeroth and first order
     for loc0, loc1s in graph.items():
@@ -266,21 +272,17 @@ def calculate_distances(tunnel_depth: int) -> dict[tuple[Location, Location], in
         for loc1 in loc1s:
             distance = loc0.distance(loc1)
             distances[(loc0, loc1)] = distance
-            frontier.add((loc0, loc1, distance))
+            frontier.add((loc0, loc1))
 
     # Add all other orders by traversing graph
     while frontier:
-        loc0, loc1, dist01 = frontier.pop()
+        loc0, loc1 = frontier.pop()
 
         for loc2 in graph[loc1]:
             new_pair = (loc0, loc2)
-            new_distance = dist01 + loc1.distance(loc2)
-            if new_pair not in distances:
-                frontier.add((loc0, loc2, new_distance))
-                distances[new_pair] = new_distance
-            elif distances[new_pair] > new_distance:
-                frontier.discard((loc0, loc2, distances[new_pair]))
-                frontier.add((loc0, loc2, new_distance))
+            new_distance = distances[(loc0, loc1)] + loc1.distance(loc2)
+            if new_pair not in distances or distances[new_pair] > new_distance:
+                frontier.add((loc0, loc2))
                 distances[new_pair] = new_distance
 
     # for locs, dist in distances.items():
@@ -288,20 +290,17 @@ def calculate_distances(tunnel_depth: int) -> dict[tuple[Location, Location], in
     return distances
 
 
-@cache
-def all_locations(tunnel_depth: int) -> list[Location]:
-    return sorted(build_location_graph(tunnel_depth).keys())
-
-
 @dataclass
 class GraphInfo:
     tunnel_depth: int
     graph: dict[Location, list[Location]] = field(init=False)
     distance: dict[tuple[Location, Location], int] = field(init=False)
+    all_locs: list[Location] = field(init=False)
 
     def __post_init__(self):
         self.graph = build_location_graph(self.tunnel_depth)
-        self.distance = calculate_distances(self.tunnel_depth)
+        self.distance = calculate_distances(self.graph)
+        self.all_locs = sorted(self.graph.keys())
 
     def direct_move_cost(self, apod_state: ApodState, destination: Location) -> int:
         return (
@@ -310,29 +309,12 @@ class GraphInfo:
         )
 
 
-def pretty_print_template(tunnel_depth: int) -> str:
-    top = "#############"
-    hallway_template = "#{}{}.{}.{}.{}.{}{}#"
-    tunnel_top_template = "###{}#{}#{}#{}###"
-    tunnel_depths_templates = ["  #{}#{}#{}#{}#"] * (tunnel_depth - 1)
-    bottom = "  #########"
-    return "\n".join(
-        [
-            top,
-            hallway_template,
-            tunnel_top_template,
-            *tunnel_depths_templates,
-            bottom,
-        ]
-    )
-
-
 @dataclass(frozen=True, order=True)
 class BoardState:
     apod_states: frozenset[ApodState]
 
     def is_occupied(self, location: Location) -> bool:
-        return location in self.apod_state_by_location.keys()
+        return location in self.occupied_locations
 
     @property
     def heuristic(self) -> int:
@@ -344,125 +326,46 @@ class BoardState:
 
     @property
     @cache
-    def apod_state_by_location(self) -> dict[Location, ApodState]:
-        return {apod_state.location: apod_state for apod_state in self.apod_states}
+    def occupied_locations(self) -> set[Location]:
+        return {apod_state.location for apod_state in self.apod_states}
 
-    @cache
-    def apod_at_location(self, location: Location) -> "ApodState | None":
-        return self.apod_state_by_location.get(location)
+    def is_destination_valid(self, apod_state: ApodState, loc: Location) -> bool:
+        """Can we move into this space?"""
 
-    @property
-    @cache
-    def non_terminal_apod_states(self) -> set[ApodState]:
-        return {apod_state for apod_state in self.apod_states if True}
+        if self.is_occupied(loc):
+            # can't move into occupied spaces
+            return False
 
-    def pretty_print(self) -> str:
+        if loc.y == 0:
+            # We can always move in the hallway
+            return True
 
-        sorted_apods = sorted(self.apod_states, key=lambda s: s.location)
-        # print(sorted_apods)
-        all_locs = all_locations(self.tunnel_depth)
-        next_apod = sorted_apods.pop(0)
-        loc_strs = ["."] * len(all_locs)
-        for idx, loc in enumerate(all_locs):
-            if loc == next_apod.location:
-                loc_strs[idx] = next_apod.apod.name
-                try:
-                    next_apod = sorted_apods.pop(0)
-                except IndexError:
-                    break
-            # print(loc, loc_strs[-1])
+        elif loc.x != apod_state.destination_x:  # Not our tunnel
+            # Can only move in another tunnel if we're already in it and we're
+            # on the way out
+            return loc.x == apod_state.location.x and loc.y < apod_state.location.y
 
-        template = pretty_print_template(self.tunnel_depth)
-        return template.format(*loc_strs)
+        else:  # Yes our tunnel
+            # There is a lot we could say here about whether the tunnel
+            # is occupied by other apods and whether we are moving
+            # up or down, but...
+
+            # All that stuff costs a lot to calculate so lets just say yes.
+            return True
 
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
         """Generate legal successor states and their costs"""
 
-        def generate_moves(apod_state: ApodState) -> Iterable[Location]:
-            # Do a mini graph traversal with just this one apod
-            frontier: set[Location] = set(graph.graph[apod_state.location])
-            have_seen: set[Location] = {apod_state.location}
-            valid_destinations: set[Location] = set()
-            while frontier:
-                loc = frontier.pop()
-
-                if self.is_occupied(loc):
-                    # can't move into occupied spaces
-                    continue
-
-                # Can we move to this space? Through it?
-                if loc.y == 0:
-                    # We can always move in the hallway
-                    valid_destinations.add(loc)
-
-                    # Mark that we've seen this one
-                    have_seen.add(loc)
-
-                    # Add its next steps to the frontier.
-                    for next_loc in graph.graph[loc]:
-                        if next_loc not in have_seen:
-                            frontier.add(next_loc)
-
-                elif loc.x != apod_state.destination_x:  # Not our tunnel
-                    # Are we already in the tunnel? And is this move up?
-                    if loc.x != apod_state.location.x or loc.y > apod_state.location.y:
-                        # This is either entering the wrong tunnel or moving down
-                        # when we should be moving up. Invalid.
-                        continue
-
-                    # We have no reason to end a turn here, so it isn't a
-                    # valid destination. But we might have reason to move through here.
-                    # We will continue on and check other positions from here.
-                    have_seen.add(loc)
-
-                    # Add its next steps to the frontier.
-                    for next_loc in graph.graph[loc]:
-                        if next_loc not in have_seen:
-                            frontier.add(next_loc)
-                else:  # Yes our tunnel
-                    # We can move in our tunnel if it isn't occupied by any
-                    # incorrect apods.
-                    # And if so, we will move to the lowest unoccupied space.
-                    lowest_unoccupied: "Location | None" = None
-                    for depth in range(self.tunnel_depth, 0, -1):
-                        tunnel_loc = Location(y=depth, x=loc.x)
-                        apod_in_tunnel_loc = self.apod_at_location(tunnel_loc)
-                        if apod_in_tunnel_loc is None:
-                            # unoccupied
-                            if lowest_unoccupied is None:
-                                lowest_unoccupied = tunnel_loc
-                        elif apod_in_tunnel_loc.apod != apod_state.apod:
-                            # occupied, incorrect apod
-                            break
-                        else:
-                            # occupied, correct apod
-                            pass
-                    else:
-                        # We didn't find any incorrect apods
-                        # That means we can move somewhere in the tunnel
-                        assert lowest_unoccupied is not None
-                        valid_destinations.add(lowest_unoccupied)
-
-                        # Mark that we've seen this one
-                        have_seen.add(loc)
-
-                        # Add its next steps to the frontier, but only if they aren't
-                        # also in this tunnel (because we know we would just
-                        # do the same thing with them and find the same lowest position)
-                        for next_loc in graph.graph[loc]:
-                            if (
-                                next_loc not in have_seen
-                                and next_loc.x != apod_state.destination_x
-                            ):
-                                frontier.add(next_loc)
-
-            return valid_destinations
-
         # loop through legal successor states
-        for apod_state in self.non_terminal_apod_states:
+        # for apod_state in self.non_terminal_apod_states:
+        for apod_state in self.apod_states:
+            # print(apod_state)
             other_states = {other for other in self.apod_states if other != apod_state}
-            for next_loc in generate_moves(apod_state):
-                # print(next_loc)
+            # for next_loc in generate_valid_moves(apod_state):
+            for next_loc in graph.graph[apod_state.location]:
+                if not self.is_destination_valid(apod_state, next_loc):
+                    continue
+                # print(apod_state, next_loc)
                 cost = graph.direct_move_cost(apod_state, next_loc)
                 new_states = frozenset({apod_state.move(next_loc), *other_states})
                 yield self.__class__(new_states), cost
@@ -553,12 +456,48 @@ def parse_lines(
     return start, end_state(tunnel_depth), graph_info
 
 
+def pretty_print_template(tunnel_depth: int) -> str:
+    top = "#############"
+    hallway_template = "#{}{}.{}.{}.{}.{}{}#"
+    tunnel_top_template = "###{}#{}#{}#{}###"
+    tunnel_depths_templates = ["  #{}#{}#{}#{}#"] * (tunnel_depth - 1)
+    bottom = "  #########"
+    return "\n".join(
+        [
+            top,
+            hallway_template,
+            tunnel_top_template,
+            *tunnel_depths_templates,
+            bottom,
+        ]
+    )
+
+
+def pretty_print(state: BoardState, graph: GraphInfo) -> str:
+
+    sorted_apods = sorted(state.apod_states, key=lambda s: s.location)
+    # print(sorted_apods)
+    next_apod = sorted_apods.pop(0)
+    loc_strs = ["."] * len(graph.all_locs)
+    for idx, loc in enumerate(graph.all_locs):
+        if loc == next_apod.location:
+            loc_strs[idx] = next_apod.apod.name
+            try:
+                next_apod = sorted_apods.pop(0)
+            except IndexError:
+                break
+        # print(loc, loc_strs[-1])
+
+    template = pretty_print_template(state.tunnel_depth)
+    return template.format(*loc_strs)
+
+
 def solution(lines: Iterable[str], tunnel_depth: int) -> int:
     start, end, graph = parse_lines(lines, tunnel_depth)
 
     cost, path = solve(start, end, graph)
     for state in path:
-        print(state.pretty_print())
+        print(pretty_print(state, graph))
     return cost
 
 
