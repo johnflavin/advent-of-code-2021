@@ -378,16 +378,16 @@ class BoardState:
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
         """Generate legal successor states and their costs"""
 
-        def generate_moves(pod: ApodState) -> Iterable[Location]:
+        def generate_moves(apod_state: ApodState) -> Iterable[Location]:
             # Do a mini graph traversal with just this one apod
-            frontier: set[Location] = set(graph.graph[pod.location])
-            have_seen: set[Location] = {pod.location}
+            frontier: set[Location] = set(graph.graph[apod_state.location])
+            have_seen: set[Location] = {apod_state.location}
             valid_destinations: set[Location] = set()
             while frontier:
                 loc = frontier.pop()
 
-                # can't move into occupied spaces
                 if self.is_occupied(loc):
+                    # can't move into occupied spaces
                     continue
 
                 # Can we move to this space? Through it?
@@ -403,9 +403,9 @@ class BoardState:
                         if next_loc not in have_seen:
                             frontier.add(next_loc)
 
-                elif loc.x != pod.destination_x:  # Not our tunnel
+                elif loc.x != apod_state.destination_x:  # Not our tunnel
                     # Are we already in the tunnel? And is this move up?
-                    if loc.x != pod.location.x or loc.y > pod.location.y:
+                    if loc.x != apod_state.location.x or loc.y > apod_state.location.y:
                         # This is either entering the wrong tunnel or moving down
                         # when we should be moving up. Invalid.
                         continue
@@ -431,7 +431,7 @@ class BoardState:
                             # unoccupied
                             if lowest_unoccupied is None:
                                 lowest_unoccupied = tunnel_loc
-                        elif apod_in_tunnel_loc.apod != pod.apod:
+                        elif apod_in_tunnel_loc.apod != apod_state.apod:
                             # occupied, incorrect apod
                             break
                         else:
@@ -452,7 +452,7 @@ class BoardState:
                         for next_loc in graph.graph[loc]:
                             if (
                                 next_loc not in have_seen
-                                and next_loc.x != pod.destination_x
+                                and next_loc.x != apod_state.destination_x
                             ):
                                 frontier.add(next_loc)
 
