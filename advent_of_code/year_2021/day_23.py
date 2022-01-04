@@ -313,8 +313,12 @@ class GraphInfo:
 class BoardState:
     apod_states: frozenset[ApodState]
 
+    @cache
+    def occupied_locations(self) -> set[Location]:
+        return {apod_state.location for apod_state in self.apod_states}
+
     def is_occupied(self, location: Location) -> bool:
-        return location in self.occupied_locations
+        return location in self.occupied_locations()
 
     @property
     def heuristic(self) -> int:
@@ -324,10 +328,14 @@ class BoardState:
     def tunnel_depth(self) -> int:
         return len(self.apod_states) // len(Apods)
 
-    @property
     @cache
-    def occupied_locations(self) -> set[Location]:
-        return {apod_state.location for apod_state in self.apod_states}
+    def other_states(self, apod_state: ApodState) -> set[ApodState]:
+        return {other for other in self.apod_states if other != apod_state}
+
+    def move(self, apod_state: ApodState, new_loc: Location) -> "BoardState":
+        return BoardState(
+            frozenset({apod_state.move(new_loc), *self.other_states(apod_state)})
+        )
 
     def is_destination_valid(self, apod_state: ApodState, loc: Location) -> bool:
         """Can we move into this space?"""
@@ -360,15 +368,13 @@ class BoardState:
         # for apod_state in self.non_terminal_apod_states:
         for apod_state in self.apod_states:
             # print(apod_state)
-            other_states = {other for other in self.apod_states if other != apod_state}
             # for next_loc in generate_valid_moves(apod_state):
             for next_loc in graph.graph[apod_state.location]:
                 if not self.is_destination_valid(apod_state, next_loc):
                     continue
                 # print(apod_state, next_loc)
                 cost = graph.direct_move_cost(apod_state, next_loc)
-                new_states = frozenset({apod_state.move(next_loc), *other_states})
-                yield self.__class__(new_states), cost
+                yield self.move(apod_state, next_loc), cost
 
 
 def end_state(tunnel_depth: int) -> BoardState:
