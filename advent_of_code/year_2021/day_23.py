@@ -332,7 +332,7 @@ class BoardState:
     apod_states: frozenset[ApodState]
 
     def is_occupied(self, location: Location) -> bool:
-        return location in self.apods_by_location.keys()
+        return location in self.apod_state_by_location.keys()
 
     @property
     def heuristic(self) -> int:
@@ -344,12 +344,12 @@ class BoardState:
 
     @property
     @cache
-    def apods_by_location(self) -> dict[Location, Apod]:
-        return {apod_state.location: apod_state.apod for apod_state in self.apod_states}
+    def apod_state_by_location(self) -> dict[Location, ApodState]:
+        return {apod_state.location: apod_state for apod_state in self.apod_states}
 
     @cache
-    def apod_at_location(self, location: Location) -> "Apod | None":
-        return self.apods_by_location.get(location)
+    def apod_at_location(self, location: Location) -> "ApodState | None":
+        return self.apod_state_by_location.get(location)
 
     @property
     @cache
@@ -431,7 +431,7 @@ class BoardState:
                             # unoccupied
                             if lowest_unoccupied is None:
                                 lowest_unoccupied = tunnel_loc
-                        elif apod_in_tunnel_loc != pod.apod:
+                        elif apod_in_tunnel_loc.apod != pod.apod:
                             # occupied, incorrect apod
                             break
                         else:
