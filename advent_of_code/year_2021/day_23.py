@@ -59,7 +59,7 @@ to the true cost, since they will definitely need to move at least that many spa
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import cache
+from functools import cached_property, wraps
 from queue import PriorityQueue
 
 EXAMPLE = """\
@@ -110,6 +110,59 @@ class Apods(OrderedEnum):
     D = Apod("D", 1000, 8)
 
 
+def cached_class(klass):
+    """Decorator to cache class instances by constructor arguments.
+
+    We "tuple-ize" the keyword arguments dictionary since
+    dicts are mutable; keywords themselves are strings and
+    so are always hashable, but if any arguments (keyword
+    or positional) are non-hashable, that set of arguments
+    is not cached.
+    """
+    cache = {}
+
+    @wraps(klass, assigned=("__name__", "__module__"), updated=())
+    class _decorated(klass):
+        # The wraps decorator can't do this because __doc__
+        # isn't writable once the class is created
+        __doc__ = klass.__doc__
+
+        def __new__(cls, *args, **kwds):
+            key = (cls,) + args + tuple(kwds.items())
+            try:
+                inst = cache.get(key, None)
+            except TypeError:
+                # Can't cache this set of arguments
+                inst = key = None
+            if inst is None:
+                # Technically this is cheating, but it works,
+                # and takes care of initializing the instance
+                # (so we can override __init__ below safely);
+                # calling up to klass.__new__ would be the
+                # "official" way to create the instance, but
+                # that raises DeprecationWarning if there are
+                # args or kwds and klass does not override
+                # __new__ (which most classes don't), because
+                # object.__new__ takes no parameters (and in
+                # Python 3 the warning will become an error)
+                inst = klass(*args, **kwds)
+                # This makes isinstance and issubclass work
+                # properly
+                object.__setattr__(inst, "__class__", cls)
+                if key is not None:
+                    cache[key] = inst
+            return inst
+
+        def __init__(self, *args, **kwds):
+            # This will be called every time __new__ is
+            # called, so we skip initializing here and do
+            # it only when the instance is created above
+            pass
+
+    return _decorated
+
+
+@cached_class
 @dataclass(frozen=True, order=True)
 class Location:
     y: int
@@ -139,12 +192,6 @@ class ApodState:
     apod_enum: Apods
     location: Location
 
-    heuristic: int = field(init=False)
-
-    def __post_init__(self):
-        heuristic = self.heuristic_distance * self.move_cost
-        object.__setattr__(self, "heuristic", heuristic)
-
     @property
     def apod(self) -> Apod:
         return self.apod_enum.value
@@ -152,7 +199,7 @@ class ApodState:
     def move(self, new_location: Location) -> "ApodState":
         return ApodState(apod_enum=self.apod_enum, location=new_location)
 
-    @property
+    @cached_property
     def at_destination(self) -> bool:
         return (
             not self.location.in_hallway and self.location.x == self.apod.destination_x
@@ -181,6 +228,10 @@ class ApodState:
         # If we're in our tunnel, distance is 0
         # Otherwise we need distance up to hallway, over to tunnel, then 1 to enter
         return 0 if x_distance == 0 else x_distance + y_distance + 1
+
+    @cached_property
+    def heuristic(self) -> int:
+        return self.move_cost * self.heuristic_distance
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.apod.name}, {self.location})"
@@ -315,12 +366,12 @@ class GraphInfo:
 class BoardState:
     apod_states: frozenset[ApodState]
 
-    @cache
+    @cached_property
     def occupied_locations(self) -> set[Location]:
         return {apod_state.location for apod_state in self.apod_states}
 
     def is_occupied(self, location: Location) -> bool:
-        return location in self.occupied_locations()
+        return location in self.occupied_locations
 
     @property
     def heuristic(self) -> int:
@@ -330,7 +381,6 @@ class BoardState:
     def tunnel_depth(self) -> int:
         return len(self.apod_states) // len(Apods)
 
-    @cache
     def other_states(self, apod_state: ApodState) -> set[ApodState]:
         return {other for other in self.apod_states if other != apod_state}
 
