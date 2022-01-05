@@ -56,12 +56,12 @@ to the true cost, since they will definitely need to move at least that many spa
 
 """
 
+import heapq
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import cached_property, wraps
-from queue import PriorityQueue
 
 EXAMPLE = """\
 #############
@@ -440,12 +440,12 @@ class CameFrom:
 def solve(
     start: BoardState, end: BoardState, graph: GraphInfo
 ) -> tuple[int, list[BoardState]]:
-    frontier: PriorityQueue[BoardStateWithPriority] = PriorityQueue()
-    frontier.put(BoardStateWithPriority(start, 0))
+    frontier: list[BoardStateWithPriority] = []
+    heapq.heappush(frontier, BoardStateWithPriority(start, 0))
     history: dict[BoardState, CameFrom] = {start: CameFrom(None, 0)}  # type: ignore
 
-    while not frontier.empty():
-        current_prioritizable_state = frontier.get()
+    while len(frontier) > 0:
+        current_prioritizable_state = heapq.heappop(frontier)
         current_state = current_prioritizable_state.state
 
         if current_state == end:
@@ -461,7 +461,9 @@ def solve(
                 or absolute_move_cost < history[next_state].cost
             ):
                 history[next_state] = CameFrom(current_state, absolute_move_cost)
-                frontier.put(BoardStateWithPriority(next_state, absolute_move_cost))
+                heapq.heappush(
+                    frontier, BoardStateWithPriority(next_state, absolute_move_cost)
+                )
 
         # debug_num_steps += 1
 
