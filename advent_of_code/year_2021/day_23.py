@@ -187,7 +187,6 @@ class Location:
             return self.y + abs(self.x - other.x) + other.y
 
 
-@cached_class
 @dataclass(frozen=True, order=True)
 class ApodState:
     apod_enum: Apods
