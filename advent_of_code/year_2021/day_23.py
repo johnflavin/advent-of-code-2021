@@ -188,7 +188,7 @@ class Location:
             return self.y + abs(self.x - other.x) + other.y
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(frozen=True)
 class ApodState:
     apod_enum: Apods
     location: Location
@@ -233,12 +233,6 @@ class ApodState:
     @cached_property
     def heuristic(self) -> int:
         return self.move_cost * self.heuristic_distance
-
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__}({self.apod.name}, {self.location})"
-
-    def __repr__(self) -> str:
-        return self.__str__()
 
 
 def build_location_graph(
@@ -356,7 +350,7 @@ class GraphInfo:
         self.all_locs = sorted(self.graph.keys())
 
 
-@dataclass(frozen=True, order=True)
+@dataclass(frozen=True)
 class BoardState:
     apod_states: frozenset[ApodState]
 
