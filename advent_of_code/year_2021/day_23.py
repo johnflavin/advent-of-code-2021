@@ -56,6 +56,7 @@ to the true cost, since they will definitely need to move at least that many spa
 
 """
 
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -314,17 +315,17 @@ def build_location_graph(
 
 def calculate_distances(
     graph: dict[Location, list[Location]]
-) -> dict[tuple[Location, Location], int]:
-    distances: dict[tuple[Location, Location], int] = {}
+) -> dict[Location, dict[Location, int]]:
+    distances: dict[Location, dict[Location, int]] = defaultdict(dict)
     frontier: set[tuple[Location, Location]] = set()
 
     # prime with zeroth and first order
     for loc0, loc1s in graph.items():
-        distances[(loc0, loc0)] = 0
+        distances[loc0][loc0] = 0
 
         for loc1 in loc1s:
             distance = loc0.distance(loc1)
-            distances[(loc0, loc1)] = distance
+            distances[loc0][loc1] = distance
             frontier.add((loc0, loc1))
 
     # Add all other orders by traversing graph
@@ -332,11 +333,10 @@ def calculate_distances(
         loc0, loc1 = frontier.pop()
 
         for loc2 in graph[loc1]:
-            new_pair = (loc0, loc2)
-            new_distance = distances[(loc0, loc1)] + loc1.distance(loc2)
-            if new_pair not in distances or distances[new_pair] > new_distance:
+            new_distance = distances[loc0][loc1] + loc1.distance(loc2)
+            if loc2 not in distances[loc0] or distances[loc0][loc2] > new_distance:
                 frontier.add((loc0, loc2))
-                distances[new_pair] = new_distance
+                distances[loc0][loc2] = new_distance
 
     # for locs, dist in distances.items():
     #     print(locs, dist)
@@ -347,19 +347,13 @@ def calculate_distances(
 class GraphInfo:
     tunnel_depth: int
     graph: dict[Location, list[Location]] = field(init=False)
-    distance: dict[tuple[Location, Location], int] = field(init=False)
+    distances: dict[Location, dict[Location, int]] = field(init=False)
     all_locs: list[Location] = field(init=False)
 
     def __post_init__(self):
         self.graph = build_location_graph(self.tunnel_depth)
-        self.distance = calculate_distances(self.graph)
+        self.distances = calculate_distances(self.graph)
         self.all_locs = sorted(self.graph.keys())
-
-    def direct_move_cost(self, apod_state: ApodState, destination: Location) -> int:
-        return (
-            self.distance[(apod_state.location, destination)]
-            * apod_state.apod.move_cost
-        )
 
 
 @dataclass(frozen=True, order=True)
@@ -425,7 +419,8 @@ class BoardState:
                 if not self.is_destination_valid(apod_state, next_loc):
                     continue
                 # print(apod_state, next_loc)
-                cost = graph.direct_move_cost(apod_state, next_loc)
+                distance = graph.distances[apod_state.location][next_loc]
+                cost = distance * apod_state.move_cost
                 yield self.move(apod_state, next_loc), cost
 
 
