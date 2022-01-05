@@ -375,8 +375,8 @@ class BoardState:
     def tunnel_depth(self) -> int:
         return len(self.apod_states) // len(Apods)
 
-    def other_states(self, apod_state: ApodState) -> set[ApodState]:
-        return {other for other in self.apod_states if other != apod_state}
+    def other_states(self, apod_state: ApodState) -> Iterable[ApodState]:
+        return (other for other in self.apod_states if other != apod_state)
 
     def move(self, apod_state: ApodState, new_loc: Location) -> "BoardState":
         return BoardState(
