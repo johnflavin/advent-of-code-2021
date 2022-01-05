@@ -187,6 +187,7 @@ class Location:
             return self.y + abs(self.x - other.x) + other.y
 
 
+@cached_class
 @dataclass(frozen=True, order=True)
 class ApodState:
     apod_enum: Apods
@@ -373,7 +374,7 @@ class BoardState:
     def is_occupied(self, location: Location) -> bool:
         return location in self.occupied_locations
 
-    @property
+    @cached_property
     def heuristic(self) -> int:
         return sum(apod_state.heuristic for apod_state in self.apod_states)
 
@@ -443,7 +444,7 @@ def end_state(tunnel_depth: int) -> BoardState:
 
 @dataclass(frozen=True, order=True)
 class PrioritizableState:
-    priority: float
+    priority: int
     state: BoardState = field(compare=False)
 
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple[BoardState, int]]:
