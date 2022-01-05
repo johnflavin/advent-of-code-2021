@@ -386,26 +386,10 @@ class BoardState:
     def is_destination_valid(self, apod_state: ApodState, loc: Location) -> bool:
         """Can we move into this space?"""
 
-        if self.is_occupied(loc):
-            # can't move into occupied spaces
-            return False
-
-        if loc.y == 0:
-            # We can always move in the hallway
-            return True
-
-        elif loc.x != apod_state.destination_x:  # Not our tunnel
-            # Can only move in another tunnel if we're already in it and we're
-            # on the way out
-            return loc.x == apod_state.location.x and loc.y < apod_state.location.y
-
-        else:  # Yes our tunnel
-            # There is a lot we could say here about whether the tunnel
-            # is occupied by other apods and whether we are moving
-            # up or down, but...
-
-            # All that stuff costs a lot to calculate so lets just say yes.
-            return True
+        return not (
+            self.is_occupied(loc)
+            or (loc.y > apod_state.location.y and loc.x != apod_state.destination_x)
+        )
 
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
         """Generate legal successor states and their costs"""
