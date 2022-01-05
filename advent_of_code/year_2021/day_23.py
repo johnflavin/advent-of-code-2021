@@ -443,49 +443,61 @@ def end_state(tunnel_depth: int) -> BoardState:
 
 
 @dataclass(frozen=True, order=True)
-class PrioritizableState:
-    priority: int
+class BoardStateWithPriority:
     state: BoardState = field(compare=False)
+    cost: int = field(compare=False)
+    priority: int = field(init=False)
 
-    def neighbors(self, graph: GraphInfo) -> Iterable[tuple[BoardState, int]]:
-        return self.state.neighbors(graph)
+    def __post_init__(self):
+        priority = self.cost + self.state.heuristic
+        object.__setattr__(self, "priority", priority)
+
+
+@dataclass(frozen=True)
+class CameFrom:
+    state: BoardState
+    cost: int
 
 
 def solve(
     start: BoardState, end: BoardState, graph: GraphInfo
 ) -> tuple[int, list[BoardState]]:
-    frontier: PriorityQueue[PrioritizableState] = PriorityQueue()
-    frontier.put(PrioritizableState(0, start))
-    came_from: dict[BoardState, BoardState] = dict()
-    cost_so_far: dict[BoardState, int] = dict()
-    cost_so_far[start] = 0
+    frontier: PriorityQueue[BoardStateWithPriority] = PriorityQueue()
+    frontier.put(BoardStateWithPriority(start, 0))
+    history: dict[BoardState, CameFrom] = {start: CameFrom(None, 0)}  # type: ignore
 
     while not frontier.empty():
-        current = frontier.get()
+        current_prioritizable_state = frontier.get()
+        current_state = current_prioritizable_state.state
 
-        if current.state == end:
+        if current_state == end:
             # print("at end")
             break
 
-        for next_state, next_state_move_cost in current.neighbors(graph):
-            new_cost = cost_so_far[current.state] + next_state_move_cost
-            if next_state not in cost_so_far or new_cost < cost_so_far[next_state]:
-                cost_so_far[next_state] = new_cost
-                came_from[next_state] = current.state
-                priority = new_cost + next_state.heuristic
-                frontier.put(PrioritizableState(priority, next_state))
+        came_from = history[current_state]
+
+        for next_state, relative_move_cost in current_state.neighbors(graph):
+            absolute_move_cost = came_from.cost + relative_move_cost
+            if (
+                next_state not in history
+                or absolute_move_cost < history[next_state].cost
+            ):
+                history[next_state] = CameFrom(current_state, absolute_move_cost)
+                frontier.put(BoardStateWithPriority(next_state, absolute_move_cost))
 
         # debug_num_steps += 1
 
     # unwind path
     path = []
     current_state = end
-    while current_state in came_from:
+    while current_state in history:
         path.append(current_state)
-        current_state = came_from[current_state]
+        current_state = history[current_state].state
     path.append(start)
 
-    return cost_so_far.get(end, -1), path[::-1]
+    end_history = history.get(end)
+    end_cost = end_history.cost if end_history else -1
+    return end_cost, path[::-1]
 
 
 def parse_lines(
