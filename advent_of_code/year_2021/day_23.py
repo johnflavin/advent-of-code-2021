@@ -493,7 +493,7 @@ def solve(
     while current_state in history:
         path.append(current_state)
         current_state = history[current_state].state
-    path.append(start)
+    # path.append(start)
 
     end_history = history.get(end)
     end_cost = end_history.cost if end_history else -1
