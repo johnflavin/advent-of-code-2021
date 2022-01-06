@@ -59,7 +59,7 @@ to the true cost, since they will definitely need to move at least that many spa
 import heapq
 from collections import defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from functools import cached_property, wraps
 
@@ -192,6 +192,7 @@ class Location:
 class ApodState:
     apod_enum: Apods
     location: Location
+    done: bool = field(default=False)
 
     @property
     def apod(self) -> Apod:
@@ -355,8 +356,12 @@ class BoardState:
     apod_states: frozenset[ApodState]
 
     @cached_property
+    def apod_by_location(self) -> dict[Location, ApodState]:
+        return {apod_state.location: apod_state for apod_state in self.apod_states}
+
+    @cached_property
     def occupied_locations(self) -> set[Location]:
-        return {apod_state.location for apod_state in self.apod_states}
+        return set(self.apod_by_location.keys())
 
     def is_occupied(self, location: Location) -> bool:
         return location in self.occupied_locations
@@ -369,13 +374,13 @@ class BoardState:
     def tunnel_depth(self) -> int:
         return len(self.apod_states) // len(Apods)
 
-    def move(self, apod_state: ApodState, new_loc: Location) -> "BoardState":
-        return BoardState(
-            frozenset(
-                other if other != apod_state else apod_state.move(new_loc)
-                for other in self.apod_states
-            )
-        )
+    # def move(self, apod_state: ApodState, new_loc: Location) -> "BoardState":
+    #     return BoardState(
+    #         frozenset(
+    #             other if other != apod_state else apod_state.move(new_loc)
+    #             for other in self.apod_states
+    #         )
+    #     )
 
     def is_destination_valid(self, apod_state: ApodState, loc: Location) -> bool:
         """Can we move into this space?"""
@@ -385,28 +390,98 @@ class BoardState:
             or (loc.y > apod_state.location.y and loc.x != apod_state.destination_x)
         )
 
+    def generate_next_states(
+        self, apod_state: ApodState, graph: GraphInfo
+    ) -> Iterable[tuple[ApodState, int]]:
+        frontier = set(graph.graph[apod_state.location])
+        have_seen = {apod_state.location}
+        potential_destinations: set[Location] = set()
+        while frontier:
+            loc = frontier.pop()
+            have_seen.add(loc)
+            if not self.is_destination_valid(apod_state, loc):
+                continue
+            potential_destinations.add(loc)
+            frontier.update(
+                next_loc for next_loc in graph.graph[loc] if next_loc not in have_seen
+            )
+
+        if not potential_destinations:
+            return ()
+
+        # "potential_destinations" is everywhere we could possibly move.
+        # Let's filter it down to a few options.
+        # If we're in any tunnel we must move to the hallway.
+        # If we're in the hallway we must move into our tunnel.
+        # And we can only move into our tunnel if there are no other apod types in it.
+        if apod_state.in_hallway:
+            # Check if it is possible to move into our tunnel.
+            tunnel_destinations = {
+                loc
+                for loc in potential_destinations
+                if loc.x == apod_state.destination_x
+            }
+            if not tunnel_destinations:
+                return ()
+
+            # We know we could move into our tunnel. But should we?
+            for depth in range(self.tunnel_depth, 0, -1):
+                tunnel_loc = Location(y=depth, x=apod_state.destination_x)
+                apod_at_tunnel_loc = self.apod_by_location.get(tunnel_loc)
+                if apod_at_tunnel_loc is None and tunnel_loc in tunnel_destinations:
+                    # We haven't found any different apods yet,
+                    # and we just found an empty spot that we can reach.
+                    # This is the only place we should go, and then we should stop.
+
+                    next_state = ApodState(
+                        apod_enum=apod_state.apod_enum, location=tunnel_loc, done=True
+                    )
+                    yield next_state, apod_state.move_cost * graph.distances[
+                        apod_state.location
+                    ][tunnel_loc]
+                elif (
+                    apod_at_tunnel_loc is not None
+                    and apod_at_tunnel_loc.apod != apod_state.apod
+                ):
+                    # We found an apod that isn't the correct type. Can't move here,
+                    # can't move anywhere
+                    return ()
+        else:
+            # Must move into the hallway
+            for loc in potential_destinations:
+                if loc.in_hallway:
+                    yield apod_state.move(loc), apod_state.move_cost * graph.distances[
+                        apod_state.location
+                    ][loc]
+
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
         """Generate legal successor states and their costs"""
 
         # loop through legal successor states
         # for apod_state in self.non_terminal_apod_states:
         for apod_state in self.apod_states:
+            if apod_state.done:
+                continue
             # print(apod_state)
             # for next_loc in generate_valid_moves(apod_state):
-            for next_loc in graph.graph[apod_state.location]:
-                if not self.is_destination_valid(apod_state, next_loc):
-                    continue
+            # for next_loc in graph.graph[apod_state.location]:
+            for next_state, cost in self.generate_next_states(apod_state, graph):
                 # print(apod_state, next_loc)
-                distance = graph.distances[apod_state.location][next_loc]
-                cost = distance * apod_state.move_cost
-                yield self.move(apod_state, next_loc), cost
+                yield BoardState(
+                    frozenset(
+                        other if other != apod_state else next_state
+                        for other in self.apod_states
+                    )
+                ), cost
 
 
 def end_state(tunnel_depth: int) -> BoardState:
     return BoardState(
         frozenset(
             ApodState(
-                location=Location(x=apod.value.destination_x, y=depth), apod_enum=apod
+                location=Location(x=apod.value.destination_x, y=depth),
+                apod_enum=apod,
+                done=True,
             )
             for apod in Apods
             for depth in range(1, tunnel_depth + 1)
@@ -492,6 +567,17 @@ def parse_lines(
                     print(f"{line=} {depth=} {x=} {c=}")
                     raise
                 apod_states.append(ApodState(location=loc, apod_enum=Apods[c]))
+
+    # Check if any apods are already in the correct space
+    # We iterate through each tunnel, bottom up
+    rows = list(zip(*[zip(range(len(apod_states)), apod_states)] * 4))
+    for apod_enum, tunnel_apods in zip(Apods, zip(*reversed(rows))):
+        apod = apod_enum.value
+        for tunnel_apod_idx, tunnel_apod in tunnel_apods:
+            if tunnel_apod.apod == apod:
+                apod_states[tunnel_apod_idx] = replace(tunnel_apod, done=True)
+            else:
+                break
 
     # print(apod_states)
     start = BoardState(frozenset(apod_states))
