@@ -57,7 +57,6 @@ to the true cost, since they will definitely need to move at least that many spa
 """
 
 import heapq
-from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from enum import Enum
@@ -255,46 +254,14 @@ def build_location_graph(
     return graph
 
 
-def calculate_distances(
-    graph: dict[Location, list[Location]]
-) -> dict[Location, dict[Location, int]]:
-    distances: dict[Location, dict[Location, int]] = defaultdict(dict)
-    frontier: set[tuple[Location, Location]] = set()
-
-    # prime with zeroth and first order
-    for loc0, loc1s in graph.items():
-        distances[loc0][loc0] = 0
-
-        for loc1 in loc1s:
-            distance = loc0.distance(loc1)
-            distances[loc0][loc1] = distance
-            frontier.add((loc0, loc1))
-
-    # Add all other orders by traversing graph
-    while frontier:
-        loc0, loc1 = frontier.pop()
-
-        for loc2 in graph[loc1]:
-            new_distance = distances[loc0][loc1] + loc1.distance(loc2)
-            if loc2 not in distances[loc0] or distances[loc0][loc2] > new_distance:
-                frontier.add((loc0, loc2))
-                distances[loc0][loc2] = new_distance
-
-    # for locs, dist in distances.items():
-    #     print(locs, dist)
-    return distances
-
-
 @dataclass
 class GraphInfo:
     tunnel_depth: int
     graph: dict[Location, list[Location]] = field(init=False)
-    distances: dict[Location, dict[Location, int]] = field(init=False)
     all_locs: list[Location] = field(init=False)
 
     def __post_init__(self):
         self.graph = build_location_graph(self.tunnel_depth)
-        self.distances = calculate_distances(self.graph)
         self.all_locs = sorted(self.graph.keys())
 
 
@@ -332,8 +299,9 @@ class BoardState:
     def generate_next_states(
         self, apod_state: ApodState, graph: GraphInfo
     ) -> Iterable[tuple[ApodState, int]]:
-        frontier = set(graph.graph[apod_state.location])
-        have_seen = {apod_state.location}
+        location = apod_state.location
+        frontier = set(graph.graph[location])
+        have_seen = {location}
         potential_destinations: set[Location] = set()
         while frontier:
             loc = frontier.pop()
@@ -372,9 +340,9 @@ class BoardState:
                     next_state = ApodState(
                         apod_enum=apod_state.apod_enum, location=tunnel_loc, done=True
                     )
-                    yield next_state, apod_state.move_cost * graph.distances[
-                        apod_state.location
-                    ][tunnel_loc]
+                    yield next_state, apod_state.move_cost * location.distance(
+                        tunnel_loc
+                    )
                 elif (
                     apod_at_tunnel_loc is not None
                     and apod_at_tunnel_loc.apod != apod_state.apod
@@ -391,9 +359,9 @@ class BoardState:
         # We can move to any of the hallway locations that we can reach.
         for loc in potential_destinations:
             if loc.in_hallway:
-                yield apod_state.move(loc), apod_state.move_cost * graph.distances[
-                    apod_state.location
-                ][loc]
+                yield apod_state.move(loc), apod_state.move_cost * location.distance(
+                    loc
+                )
 
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
         """Generate legal successor states and their costs"""
