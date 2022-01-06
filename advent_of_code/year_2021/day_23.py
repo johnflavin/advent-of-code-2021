@@ -350,20 +350,17 @@ class BoardState:
 
         # "potential_destinations" is everywhere we could possibly move.
         # Let's filter it down to a few options.
-        # If we're in any tunnel we must move to the hallway.
-        # If we're in the hallway we must move into our tunnel.
-        # And we can only move into our tunnel if there are no other apod types in it.
-        if apod_state.in_hallway:
-            # Check if it is possible to move into our tunnel.
-            tunnel_destinations = {
-                loc
-                for loc in potential_destinations
-                if loc.x == apod_state.destination_x
-            }
-            if not tunnel_destinations:
-                return ()
 
+        # Check if it is possible to move into our tunnel.
+        tunnel_destinations = {
+            loc for loc in potential_destinations if loc.x == apod_state.destination_x
+        }
+
+        if tunnel_destinations:
             # We know we could move into our tunnel. But should we?
+            # The only way we would move into our tunnel is if there are no
+            # apods of the wrong type. And if that's the case, we should move to the
+            # deepest empty space.
             for depth in range(self.tunnel_depth, 0, -1):
                 tunnel_loc = Location(y=depth, x=apod_state.destination_x)
                 apod_at_tunnel_loc = self.apod_by_location.get(tunnel_loc)
@@ -383,15 +380,20 @@ class BoardState:
                     and apod_at_tunnel_loc.apod != apod_state.apod
                 ):
                     # We found an apod that isn't the correct type. Can't move here,
-                    # can't move anywhere
-                    return ()
-        else:
-            # Must move into the hallway
-            for loc in potential_destinations:
-                if loc.in_hallway:
-                    yield apod_state.move(loc), apod_state.move_cost * graph.distances[
-                        apod_state.location
-                    ][loc]
+                    # can't move anywhere in tunnel.
+                    break
+
+        # Only other option is to move into the hallway.
+        # If we're already in the hallway, then sorry, we can't move anywhere.
+        if apod_state.in_hallway:
+            return ()
+
+        # We can move to any of the hallway locations that we can reach.
+        for loc in potential_destinations:
+            if loc.in_hallway:
+                yield apod_state.move(loc), apod_state.move_cost * graph.distances[
+                    apod_state.location
+                ][loc]
 
     def neighbors(self, graph: GraphInfo) -> Iterable[tuple["BoardState", int]]:
         """Generate legal successor states and their costs"""
