@@ -7,6 +7,11 @@ from typing import Iterable, Protocol, cast
 import requests
 
 
+RESOURCES = Path(__package__).parent / "resources"
+INPUT_RESOURCES = RESOURCES / "inputs"
+SESSION_COOKIE_FILE = RESOURCES / "session.txt"
+
+
 class PuzzleModule(Protocol):
     EXAMPLE: str
     PART_ONE_EXAMPLE_RESULT: int | str
@@ -46,22 +51,13 @@ def download_puzzle_data(year: str | int, day: str | int) -> bytes:
 
 
 def read_session_cookie(year: str | int) -> str:
-    resource_package = f"{__package__}.year_{year}.resources"
-    resource_name = "session.txt"
-    session_cookie_file = importlib.resources.files(resource_package).joinpath(
-        resource_name
-    )
-    assert isinstance(session_cookie_file, Path)
-    with open(session_cookie_file, "r") as f:
+
+    with open(SESSION_COOKIE_FILE, "r") as f:
         return f.read().strip()
 
 
 def find_input_file(year: str | int, day: str | int) -> Path:
-    resource_package = f"{__package__}.year_{year}.resources"
-    resource_name = f"day_{day:02}.input.txt"
-    resource = importlib.resources.files(resource_package).joinpath(resource_name)
-    assert isinstance(resource, Path)
-    return resource
+    return INPUT_RESOURCES / f"{year}-12-{day:02}.txt"
 
 
 def get_input_file_lines(year: str | int, day: str | int) -> Iterable[str]:
