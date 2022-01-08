@@ -18,15 +18,20 @@ def pytest_generate_tests(metafunc):
     now = datetime.now()
 
     def generate_year_days():
-        year = FIRST_YEAR
-        day = 1
-        while (year, day) <= (now.year, now.day):
-            yield (year, day)
-            if day < 31:
-                day += 1
+        start_year = FIRST_YEAR
+        end_year = now.year - 1 if now.month < 12 else now.year
+        years = range(start_year, end_year + 1)
+        start_day = 1
+        current_year_end_day = 25 if now.month < 12 else now.day
+        prior_year_end_day = 25
+
+        for year in years:
+            if now.year > year:
+                days = range(start_day, prior_year_end_day + 1)
             else:
-                year += 1
-                day = 1
+                days = range(start_day, current_year_end_day + 1)
+            for day in days:
+                yield (year, day)
 
     metafunc.parametrize(
         "puzzle_module,input_file_lines,part",
