@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pyperclip
 
-from advent_of_code_2021.util import (
+from .util import (
     Part,
     import_puzzle_module,
     get_input_file_lines,

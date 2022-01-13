@@ -1,6 +1,6 @@
 import pytest
 
-from advent_of_code_2021.util import (
+from aoc2021.util import (
     Part,
     PuzzleModule,
     get_input_file_lines,
