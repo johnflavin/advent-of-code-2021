@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pyperclip
 
-from advent_of_code.util import (
+from advent_of_code_2021.util import (
     Part,
     import_puzzle_module,
     get_input_file_lines,
@@ -27,8 +27,8 @@ def puzzle_result_output(expected: int | str, actual: int | str) -> tuple[str, b
     return f"actual {actual} {eq} expected {expected} {emoji}", correct
 
 
-def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, int]:
-    puzzle_module = import_puzzle_module(year, day)
+def run_puzzle_func(day: str | int, part: Part) -> tuple[str, int]:
+    puzzle_module = import_puzzle_module(day)
     puzzle_func = puzzle_module.part_one if part == Part.ONE else puzzle_module.part_two
 
     example = iter(puzzle_module.EXAMPLE.strip().split("\n"))
@@ -46,7 +46,7 @@ def run_puzzle_func(year: str | int, day: str | int, part: Part) -> tuple[str, i
     if not example_is_correct:
         return example_output, 1
 
-    puzzle = get_input_file_lines(year, day)
+    puzzle = get_input_file_lines(day)
     actual_puzzle_result = puzzle_func(puzzle)
     expected_puzzle_result = (
         puzzle_module.PART_ONE_RESULT
@@ -99,28 +99,18 @@ def main(argv):
 
     # Determine date of puzzle to run and import main from there
     datestamp = args.date
-    if datestamp is None:
-        # Use current date and time to figure out puzzle to run
-        now = datetime.now()
-        year = now.year
-
-        # Puzzles release at 12 am eastern, so 11 pm local time
-        # If it's later than that we want to run tomorrow's puzzle
-        day = now.day if now.hour < 23 else now.day + 1
-    else:
-        year, _, day = datestamp.split("-")
-
+    day = datetime.now().day if datestamp is None else datestamp.split("-")[-1]
     if args.both:
         exit_code = 0
         for part in Part:
-            output_str, exit_code_ = run_puzzle_func(year, day, part)
+            output_str, exit_code_ = run_puzzle_func(day, part)
             print(output_str)
             exit_code = exit_code or exit_code_
 
     else:
         part = Part(args.part)
 
-        output_str, exit_code = run_puzzle_func(year, day, part)
+        output_str, exit_code = run_puzzle_func(day, part)
         print(output_str)
 
     return exit_code
